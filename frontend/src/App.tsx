@@ -8,6 +8,7 @@ import ChatPage from './pages/ChatPage';
 import UploadPage from './pages/UploadPage';
 import DocumentsPage from './pages/DocumentsPage';
 import SmartModesPage from './pages/SmartModesPage';
+import SettingsPage from './pages/SettingsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="upload"      element={<UploadPage />} />
             <Route path="documents"   element={<DocumentsPage />} />
             <Route path="modes"       element={<SmartModesPage />} />
+            <Route path="settings"    element={<SettingsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
