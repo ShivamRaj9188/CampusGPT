@@ -16,10 +16,10 @@ Built around a robust Spring Boot microservice architecture and a reactive React
 
 ```mermaid
 graph TD
-    Client["🎓 Client (React UI)"]
-    API["⚡ Spring Boot REST API"]
-    DB[("🐘 PostgreSQL + pgvector")]
-    LLM["🧠 Ollama Inference (Local)"]
+    Client["Client (React UI)"]
+    API["Spring Boot REST API"]
+    DB[("PostgreSQL + pgvector")]
+    LLM["Ollama Inference (Local)"]
 
     Client -- "HTTPS / SSE" --> API
     API -- "JDBC" --> DB
