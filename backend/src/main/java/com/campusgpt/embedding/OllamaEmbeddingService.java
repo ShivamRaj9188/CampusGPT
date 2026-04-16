@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -34,6 +37,23 @@ public class OllamaEmbeddingService {
     @Value("${ollama.embedding-model}")
     private String embeddingModel;
 
+    @Value("${rag.embedding-cache-minutes:15}")
+    private long embeddingCacheMinutes;
+
+    @Value("${rag.max-cached-embeddings:200}")
+    private int maxCachedEmbeddings;
+
+    /**
+     * Small LRU cache for repeated question embeddings.
+     * This keeps common retries and repeat questions snappy without adding dependencies.
+     */
+    private final Map<String, CachedEmbedding> embeddingCache = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, CachedEmbedding> eldest) {
+            return size() > maxCachedEmbeddings;
+        }
+    };
+
     /**
      * Generates an embedding vector for the given text.
      *
@@ -43,6 +63,10 @@ public class OllamaEmbeddingService {
      */
     public float[] embed(String text) {
         log.debug("Embedding text of length {} with model {}", text.length(), embeddingModel);
+        float[] cached = getCachedEmbedding(text);
+        if (cached != null) {
+            return cached;
+        }
 
         // Build request payload for Ollama embeddings API
         Map<String, String> request = Map.of(
@@ -73,6 +97,7 @@ public class OllamaEmbeddingService {
                 embedding[i] = (float) embeddingNode.get(i).asDouble();
             }
 
+            cacheEmbedding(text, embedding);
             log.debug("Generated embedding of dimension {}", embedding.length);
             return embedding;
 
@@ -80,6 +105,28 @@ public class OllamaEmbeddingService {
             log.error("Failed to generate embedding: {}", e.getMessage());
             throw new RuntimeException("Embedding service unavailable. Is Ollama running with nomic-embed-text?", e);
         }
+    }
+
+    private synchronized float[] getCachedEmbedding(String text) {
+        CachedEmbedding cached = embeddingCache.get(text);
+        if (cached == null) {
+            return null;
+        }
+        if (cached.expiresAt().isBefore(Instant.now())) {
+            embeddingCache.remove(text);
+            return null;
+        }
+        return cached.embedding();
+    }
+
+    private synchronized void cacheEmbedding(String text, float[] embedding) {
+        embeddingCache.put(
+                text,
+                new CachedEmbedding(
+                        embedding.clone(),
+                        Instant.now().plus(Duration.ofMinutes(embeddingCacheMinutes))
+                )
+        );
     }
 
     /**
@@ -95,4 +142,6 @@ public class OllamaEmbeddingService {
         sb.append("]");
         return sb.toString();
     }
+
+    private record CachedEmbedding(float[] embedding, Instant expiresAt) {}
 }

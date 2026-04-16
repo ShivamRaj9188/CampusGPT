@@ -13,5 +13,14 @@ public enum ChatMode {
     TEN_MARK,
 
     /** Generates concise, bullet-point short notes for quick revision */
-    SHORT_NOTES
+    SHORT_NOTES,
+
+    /** Generates likely viva questions and model answers */
+    VIVA,
+
+    /** Produces rapid-fire revision summaries */
+    REVISION_BLAST,
+
+    /** Suggests what to focus on for upcoming exams */
+    EXAM_STRATEGY
 }

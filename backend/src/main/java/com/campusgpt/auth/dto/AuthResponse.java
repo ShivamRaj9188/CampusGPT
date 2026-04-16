@@ -11,4 +11,6 @@ public class AuthResponse {
     private String token;
     private String username;
     private String email;
+    private Integer streakCount;
+    private Integer aiConfidence;
 }

@@ -41,6 +41,17 @@ public class UserEntity implements UserDetails {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "last_activity_at")
+    private LocalDateTime lastActivityAt;
+
+    @Builder.Default
+    @Column(name = "streak_count")
+    private Integer streakCount = 0;
+
+    @Builder.Default
+    @Column(name = "ai_confidence")
+    private Integer aiConfidence = 0;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

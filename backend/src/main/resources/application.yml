@@ -47,9 +47,25 @@ jwt:
 # No API key needed for local Ollama — but set OLLAMA_BASE_URL if hosted remotely.
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:llama3}
+  model: ${OLLAMA_MODEL:llama3.2:3b}
   embedding-model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
   embedding-dimension: 768
+  keep-alive: ${OLLAMA_KEEP_ALIVE:10m}
+  temperature: ${OLLAMA_TEMPERATURE:0.2}
+  num-predict:
+    default: ${OLLAMA_NUM_PREDICT_DEFAULT:220}
+    explain-concept: ${OLLAMA_NUM_PREDICT_EXPLAIN:260}
+    ten-mark: ${OLLAMA_NUM_PREDICT_TEN_MARK:360}
+    short-notes: ${OLLAMA_NUM_PREDICT_SHORT_NOTES:200}
+    viva: ${OLLAMA_NUM_PREDICT_VIVA:240}
+    revision-blast: ${OLLAMA_NUM_PREDICT_REVISION_BLAST:180}
+    exam-strategy: ${OLLAMA_NUM_PREDICT_EXAM_STRATEGY:220}
+
+rag:
+  top-k: ${RAG_TOP_K:3}
+  max-context-chars: ${RAG_MAX_CONTEXT_CHARS:1800}
+  embedding-cache-minutes: ${RAG_EMBED_CACHE_MINUTES:15}
+  max-cached-embeddings: ${RAG_MAX_CACHED_EMBEDDINGS:200}
 
 # ─── Rate Limiting Configuration ──────────────────────────────────────────────
 rate-limit:

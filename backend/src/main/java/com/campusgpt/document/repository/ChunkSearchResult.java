@@ -8,4 +8,5 @@ public interface ChunkSearchResult {
     Long getId();
     String getContent();
     Long getDocumentId();
+    Double getSimilarityScore();
 }

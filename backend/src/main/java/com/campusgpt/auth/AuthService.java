@@ -7,8 +7,14 @@ import com.campusgpt.auth.entity.UserEntity;
 import com.campusgpt.auth.jwt.JwtUtil;
 import com.campusgpt.auth.repository.UserRepository;
 import com.campusgpt.security.InputSanitizer;
+import com.campusgpt.user.dto.UpdatePasswordRequest;
+import com.campusgpt.user.dto.UpdateProfileRequest;
+import com.campusgpt.user.dto.UserProfileResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -63,6 +69,7 @@ public class AuthService implements UserDetailsService {
                 .username(username)
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword())) // BCrypt hash
+                .streakCount(0)
                 .build();
 
         userRepository.save(user);
@@ -70,7 +77,7 @@ public class AuthService implements UserDetailsService {
 
         // Generate and return JWT token
         String token = jwtUtil.generateToken(user.getUsername());
-        return new AuthResponse(token, user.getUsername(), user.getEmail());
+        return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getStreakCount(), user.getAiConfidence());
     }
 
     /**
@@ -95,7 +102,103 @@ public class AuthService implements UserDetailsService {
         }
 
         log.info("User logged in: {}", user.getUsername());
+        recordActivity(user.getUsername()); // Update streak on login
+        user = userRepository.findByUsername(user.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
         String token = jwtUtil.generateToken(user.getUsername());
-        return new AuthResponse(token, user.getUsername(), user.getEmail());
+        return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getStreakCount(), user.getAiConfidence());
+    }
+
+    /**
+     * Updates user profile (username/email).
+     * If username changes, a new JWT is issued.
+     */
+    public AuthResponse updateProfile(String currentUsername, UpdateProfileRequest request) {
+        UserEntity user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        String newUsername = InputSanitizer.sanitizeUsername(request.getUsername());
+        String newEmail    = InputSanitizer.sanitizeText(request.getEmail(), InputSanitizer.MAX_EMAIL_LENGTH).toLowerCase();
+
+        // If username is changing, check for uniqueness
+        if (!user.getUsername().equalsIgnoreCase(newUsername) && userRepository.existsByUsername(newUsername)) {
+            throw new IllegalArgumentException("Username already taken");
+        }
+        
+        // If email is changing, check for uniqueness
+        if (!user.getEmail().equalsIgnoreCase(newEmail) && userRepository.existsByEmail(newEmail)) {
+            throw new IllegalArgumentException("Email already registered");
+        }
+
+        user.setUsername(newUsername);
+        user.setEmail(newEmail);
+        userRepository.save(user);
+
+        log.info("User profile updated: {}", newUsername);
+
+        // Re-generate token with new username
+        String token = jwtUtil.generateToken(newUsername);
+        return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getStreakCount(), user.getAiConfidence());
+    }
+
+    /**
+     * Returns the latest user profile and derived live metrics.
+     */
+    public UserProfileResponse getCurrentUserProfile(String currentUsername) {
+        UserEntity user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return UserProfileResponse.from(user);
+    }
+
+    /**
+     * Updates user password securely.
+     */
+    public void updatePassword(String currentUsername, UpdatePasswordRequest request) {
+        UserEntity user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            log.warn("[Security] Failed password change attempt for user: {}", currentUsername);
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("New password must be different from the current password");
+        }
+
+        // Hash and save new password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        log.info("User password rotated: {}", currentUsername);
+    }
+
+    /**
+     * Records an activity for the user and updates study streak.
+     * Logic:
+     * - If last activity was yesterday, increment streak.
+     * - If last activity was today, do nothing (already active).
+     * - If last activity was > 1 day ago, reset streak to 1.
+     */
+    public void recordActivity(String username) {
+        userRepository.findByUsername(username).ifPresent(user -> {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime last = user.getLastActivityAt();
+
+            if (last == null) {
+                user.setStreakCount(1);
+            } else {
+                long daysBetween = ChronoUnit.DAYS.between(last.toLocalDate(), now.toLocalDate());
+                if (daysBetween == 1) {
+                    user.setStreakCount(user.getStreakCount() + 1);
+                } else if (daysBetween > 1) {
+                    user.setStreakCount(1);
+                }
+            }
+            
+            user.setLastActivityAt(now);
+            userRepository.save(user);
+        });
     }
 }

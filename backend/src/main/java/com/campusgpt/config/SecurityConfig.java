@@ -1,6 +1,7 @@
 package com.campusgpt.config;
 
 import com.campusgpt.auth.jwt.JwtFilter;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +48,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // Define authorization rules
             .authorizeHttpRequests(auth -> auth
+                // Async/error redispatches are used by streaming endpoints like SseEmitter.
+                .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                 // Allow preflight OPTIONS requests for all paths
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Public auth endpoints (login, signup)

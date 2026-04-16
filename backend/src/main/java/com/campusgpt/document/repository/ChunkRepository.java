@@ -36,12 +36,13 @@ public interface ChunkRepository extends JpaRepository<ChunkEntity, Long> {
     @Query(value = """
             SELECT c.id,
                    c.content,
-                   c.document_id AS documentId
+                   c.document_id AS documentId,
+                   GREATEST(0, LEAST(1, 1 - (CAST(c.embedding AS vector) <=> CAST(:queryVector AS vector)))) AS similarityScore
             FROM   chunks c
             JOIN   documents d ON c.document_id = d.id
             WHERE  d.user_id = :userId
               AND  c.embedding IS NOT NULL
-            ORDER  BY (c.embedding::vector) <=> (:queryVector::vector)
+            ORDER  BY CAST(c.embedding AS vector) <=> CAST(:queryVector AS vector)
             LIMIT  :limit
             """, nativeQuery = true)
     List<ChunkSearchResult> findSimilarChunks(
