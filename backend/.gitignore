@@ -1,0 +1,25 @@
+# ─── Environment files (NEVER commit) ────────────────────────
+# OWASP A02: Cryptographic Failures — secrets must never be in version control
+.env
+.env.local
+.env.production
+*.env
+
+# ─── Maven build output ───────────────────────────────────────
+target/
+*.jar
+*.war
+
+# ─── IDE files ────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.class
+
+# ─── OS files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Logs (may contain sensitive data) ───────────────────────
+*.log
+logs/
