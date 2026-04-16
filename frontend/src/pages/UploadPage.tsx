@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, Tag, X, Loader2, CheckCircle, Trash2 } from 'lucide-react';
+import { Upload, FileText, Tag, X, Loader2, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { documentService } from '../services/documentService';
 import { Document } from '../types';
 import { format } from 'date-fns';
@@ -179,11 +179,12 @@ export default function UploadPage() {
       {/* Error */}
       <AnimatePresence>
         {error && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="text-sm px-4 py-3 rounded-xl mb-4"
+          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="flex items-center gap-2 text-sm px-4 py-3 rounded-xl mb-4"
             style={{ background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)', color: '#ff6b6b' }}>
-            ⚠ {error}
-          </motion.p>
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </motion.div>
         )}
       </AnimatePresence>
 

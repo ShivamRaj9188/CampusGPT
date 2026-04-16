@@ -1,11 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
-import { Send, StopCircle, Bot, User, Sparkles, Plus, Search } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { documentService } from '../services/documentService';
+import { 
+  Send, StopCircle, Bot, User, Sparkles, Plus,
+  AlertTriangle, Lightbulb, FileText, Zap, Mic, Rocket, Target 
+} from 'lucide-react';
+import { useDocuments } from '../hooks/useDocuments';
 import { chatService } from '../services/chatService';
-import { Document, Message, ChatMode, CHAT_MODES } from '../types';
+import { Message, ChatMode, CHAT_MODES } from '../types';
+import { useAuth } from '../context/AuthContext';
+
+// Map icon string names back to Lucide components
+const ModeIcons: Record<string, React.ElementType> = {
+  Lightbulb,
+  FileText,
+  Zap,
+  Mic,
+  Rocket,
+  Target
+};
 
 let msgId = 0;
 const uid = () => `m${++msgId}`;
@@ -28,17 +41,17 @@ const MODE_COLORS: Record<ChatMode, string> = {
 };
 
 export default function ChatPage() {
-  const { user } = useAuth();
+  const { refreshUser } = useAuth();
+
   const [messages, setMessages]       = useState<Message[]>([]);
   const [input, setInput]             = useState('');
   const [mode, setMode]               = useState<ChatMode>('EXPLAIN_CONCEPT');
   const [isStreaming, setIsStreaming]  = useState(false);
-  const [documents, setDocuments]     = useState<Document[]>([]);
+  const { documents }                 = useDocuments();
   const abortRef                      = useRef<AbortController | null>(null);
   const bottomRef                     = useRef<HTMLDivElement>(null);
   const textareaRef                   = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { documentService.list().then(setDocuments).catch(() => {}); }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   useEffect(() => {
     if (textareaRef.current) {
@@ -62,8 +75,15 @@ export default function ChatPage() {
     abortRef.current = chatService.stream(
       q, mode,
       (token) => setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: m.content + token } : m)),
-      ()      => { setMessages(prev => prev.map(m => m.id === aiId ? { ...m, isStreaming: false } : m)); setIsStreaming(false); },
-      (err)   => { setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: `⚠ ${err}`, isStreaming: false } : m)); setIsStreaming(false); }
+      ()      => {
+        setMessages(prev => prev.map(m => m.id === aiId ? { ...m, isStreaming: false } : m));
+        setIsStreaming(false);
+        void refreshUser();
+      },
+      (err)   => { 
+        setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: `Error: ${err}`, isStreaming: false } : m)); 
+        setIsStreaming(false); 
+      }
     );
   }, [input, isStreaming, mode]);
 
@@ -97,13 +117,17 @@ export default function ChatPage() {
         <div className="flex items-center gap-2">
           {/* Mode selector */}
           <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            {(Object.entries(CHAT_MODES) as [ChatMode, typeof CHAT_MODES[ChatMode]][]).map(([key, val]) => (
-              <button key={key} onClick={() => setMode(key)}
-                      className={`mode-pill text-xs py-1.5 px-2.5 ${mode === key ? 'active' : ''}`}
-                      style={mode === key ? { '--tw-border-opacity': 1, color: MODE_COLORS[key] } as React.CSSProperties : {}}>
-                {val.emoji} {val.label}
-              </button>
-            ))}
+            {(Object.entries(CHAT_MODES) as [ChatMode, typeof CHAT_MODES[ChatMode]][]).map(([key, val]) => {
+              const Icon = ModeIcons[val.iconName] || Sparkles;
+              return (
+                <button key={key} onClick={() => setMode(key)}
+                        className={`mode-pill text-xs py-1.5 px-2.5 flex items-center gap-1.5 ${mode === key ? 'active' : ''}`}
+                        style={mode === key ? { '--tw-border-opacity': 1, color: MODE_COLORS[key] } as React.CSSProperties : {}}>
+                  <Icon className="w-3.5 h-3.5" />
+                  {val.label}
+                </button>
+              );
+            })}
           </div>
 
           <button className="btn-ghost py-2 px-3 text-xs gap-1.5">
@@ -229,7 +253,13 @@ export default function ChatPage() {
           {/* Mode indicator */}
           <div className="flex items-center gap-2 mb-2.5">
             <div className="live-dot w-1.5 h-1.5" />
-            <span className="text-xs" style={{ color: MODE_COLORS[mode] }}>{CHAT_MODES[mode].emoji} {CHAT_MODES[mode].label}</span>
+            <span className="text-xs flex items-center gap-1.5" style={{ color: MODE_COLORS[mode] }}>
+              {(() => {
+                const Icon = ModeIcons[CHAT_MODES[mode].iconName] || Sparkles;
+                return <Icon className="w-3 h-3" />;
+              })()}
+              {CHAT_MODES[mode].label}
+            </span>
             <span className="text-xs" style={{ color: '#2a2a2a' }}>· Enter to send · Shift+Enter for new line</span>
           </div>
 

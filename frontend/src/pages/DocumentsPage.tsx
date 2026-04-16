@@ -1,27 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Trash2, Loader2, FolderOpen, Package } from 'lucide-react';
 import { documentService } from '../services/documentService';
+import { useDocuments } from '../hooks/useDocuments';
+import { CATEGORY_COLORS } from '../utils/constants';
 import { Document } from '../types';
 import { format } from 'date-fns';
 
 const SUBJECTS = ['All', 'DBMS', 'CN', 'AI', 'ML', 'Java', 'OS', 'Physics', 'Math', 'Chemistry', 'General'];
 
 const COLORS: Record<string, string> = {
-  DBMS: '#00ff9d', CN: '#00c8ff', AI: '#a259ff', ML: '#00c8ff',
-  Java: '#ff6b35', OS: '#00ff9d', Physics: '#a259ff', Math: '#ff6b35',
-  Chemistry: '#00c8ff', General: '#5a5a5a', All: '#5a5a5a',
+  ...CATEGORY_COLORS,
+  All: '#5a5a5a',
 };
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [filter, setFilter]       = useState('All');
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    documentService.list().then(setDocuments).finally(() => setLoading(false));
-  }, []);
+  const { documents, loading, remove } = useDocuments();
+  const [filter, setFilter]            = useState('All');
+  const [deletingId, setDeletingId]    = useState<number | null>(null);
 
   const filtered = filter === 'All' ? documents : documents.filter(d => d.category === filter);
 
@@ -34,7 +30,7 @@ export default function DocumentsPage() {
 
   const handleDelete = async (id: number) => {
     setDeletingId(id);
-    try { await documentService.delete(id); setDocuments(prev => prev.filter(d => d.id !== id)); }
+    try { await documentService.delete(id); remove(id); }
     catch { /* silently fail */ }
     finally { setDeletingId(null); }
   };
