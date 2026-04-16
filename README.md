@@ -12,6 +12,29 @@ Built around a robust Spring Boot microservice architecture and a reactive React
 *   **AI Stack**: Ollama (Llama 3 for text generation, Nomic for dense vector embeddings)
 *   **Processing**: Apache PDFBox for extraction, algorithmic document chunking
 
+### System Architecture
+
+```mermaid
+graph TD
+    Client["🎓 Client (React UI)"]
+    API["⚡ Spring Boot REST API"]
+    DB[("🐘 PostgreSQL + pgvector")]
+    LLM["🧠 Ollama Inference (Local)"]
+
+    Client -- "HTTPS / SSE" --> API
+    API -- "JDBC" --> DB
+    API -- "HTTP REST" --> LLM
+    
+    subgraph "Backend Services"
+        API
+    end
+    
+    subgraph "State & Intelligence Layer"
+        DB
+        LLM
+    end
+```
+
 ## Primary Features
 
 *   **RAG-Powered Chat**: Streamed, token-by-token responses using Server-Sent Events (SSE) based on document context.
@@ -19,6 +42,25 @@ Built around a robust Spring Boot microservice architecture and a reactive React
 *   **Smart Instructional Modes**: Contextual prompts (e.g., Explain Concept, 10-Mark Answer, Revision Blast, Viva Questions) altering the LLM's response structure.
 *   **Security Foundation**: Hardened with JWT authentication, IP-based rate limiting (Bucket4J), strict input sanitization, and OWASP-recommended HTTP headers.
 *   **Premium Interface**: A modern aesthetic featuring a neo-glass design system with layered blurring, micro-animations, and dynamic data visualization components.
+
+### RAG Inference Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Backend
+    participant DB as Postgres (pgvector)
+    participant Ollama
+    
+    User->>Backend: 1. Send query (e.g., "Explain OSI Model")
+    Backend->>Ollama: 2. Generate embedding for query
+    Ollama-->>Backend: 3. Return query vector
+    Backend->>DB: 4. Cosine similarity search (query vector)
+    DB-->>Backend: 5. Return Top-K relevant text chunks
+    Backend->>Ollama: 6. Inject chunks into Llama-3 prompt
+    Ollama-->>Backend: 7. Stream token response
+    Backend-->>User: 8. Forward SSE tokens to UI
+```
 
 ## Prerequisites
 
