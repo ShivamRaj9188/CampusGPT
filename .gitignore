@@ -1,0 +1,22 @@
+# Repo Metadata
+.omx/
+.vscode/
+
+# Build Artifacts
+**/target/
+**/dist/
+**/node_modules/
+backend/apache-maven-3.9.6/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# OS Files
+.DS_Store
+Thumbs.db

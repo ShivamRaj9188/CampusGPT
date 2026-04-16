@@ -1,170 +1,84 @@
 # CampusGPT
 
-CampusGPT is an intelligent academic operating system designed for educational institutions. The application leverages a Retrieval-Augmented Generation (RAG) pipeline allowing students and faculty to upload academic documents (PDfs) and query them through advanced localized language models. 
+> AI-powered academic operating system — RAG + local LLM + pgvector
 
-Built around a robust Spring Boot microservice architecture and a reactive React frontend, it features streaming text generation, localized semantic search, and multiple context-aware instructional modes.
+## Tech Stack
 
-## Architectural Overview
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite, Framer Motion, Lucide |
+| Backend | Spring Boot 3.2, Java 17, Spring Security (JWT) |
+| Database | PostgreSQL 14 + pgvector extension |
+| AI | Ollama (llama3.2:3b + nomic-embed-text) |
+| Architecture | RAG pipeline (PDF → chunks → embeddings → vector search → LLM) |
 
-*   **Frontend**: React 18, TypeScript, Tailwind CSS, Framer Motion
-*   **Backend**: Java 17, Spring Boot 3.2, Spring Security (JWT)
-*   **Database**: PostgreSQL 15+ equipped with the `pgvector` extension
-*   **AI Stack**: Ollama (Llama 3 for text generation, Nomic for dense vector embeddings)
-*   **Processing**: Apache PDFBox for extraction, algorithmic document chunking
+## Quick Start
 
-### System Architecture
+### Prerequisites
+- Java 17 (set `JAVA_HOME` to your Java 17 installation)
+- PostgreSQL 14 with pgvector extension enabled
+- Ollama running locally with `llama3.2:3b` and `nomic-embed-text` pulled
 
-```mermaid
-graph TD
-    Client["Client (React UI)"]
-    API["Spring Boot REST API"]
-    DB[("PostgreSQL + pgvector")]
-    LLM["Ollama Inference (Local)"]
-
-    Client -- "HTTPS / SSE" --> API
-    API -- "JDBC" --> DB
-    API -- "HTTP REST" --> LLM
-    
-    subgraph "Backend Services"
-        API
-    end
-    
-    subgraph "State & Intelligence Layer"
-        DB
-        LLM
-    end
-```
-
-## Primary Features
-
-*   **RAG-Powered Chat**: Streamed, token-by-token responses using Server-Sent Events (SSE) based on document context.
-*   **Knowledge Base Management**: PDF upload, extraction, and automated vectorization.
-*   **Smart Instructional Modes**: Contextual prompts (e.g., Explain Concept, 10-Mark Answer, Revision Blast, Viva Questions) altering the LLM's response structure.
-*   **Security Foundation**: Hardened with JWT authentication, IP-based rate limiting (Bucket4J), strict input sanitization, and OWASP-recommended HTTP headers.
-*   **Premium Interface**: A modern aesthetic featuring a neo-glass design system with layered blurring, micro-animations, and dynamic data visualization components.
-
-### RAG Inference Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Backend
-    participant DB as Postgres (pgvector)
-    participant Ollama
-    
-    User->>Backend: 1. Send query (e.g., "Explain OSI Model")
-    Backend->>Ollama: 2. Generate embedding for query
-    Ollama-->>Backend: 3. Return query vector
-    Backend->>DB: 4. Cosine similarity search (query vector)
-    DB-->>Backend: 5. Return Top-K relevant text chunks
-    Backend->>Ollama: 6. Inject chunks into Llama-3 prompt
-    Ollama-->>Backend: 7. Stream token response
-    Backend-->>User: 8. Forward SSE tokens to UI
-```
-
-## Prerequisites
-
-Ensure the following dependencies are installed prior to proceeding:
-
-1.  **Java Standard Edition (JDK) 17** or higher
-2.  **Node.js (LTS)** and `npm`
-3.  **Maven** (optional, recommended if you aren't using the embedded wrapper)
-4.  **PostgreSQL** with the `pgvector` extension installed
-5.  **Ollama** framework for running inference locally
-
-## Local Installation Guide
-
-### 1. Model Provisioning (Ollama)
-
-CampusGPT defaults to utilizing the `llama3` instruct model, and `nomic-embed-text` for vectorization. 
-
-Start the Ollama daemon and fetch the required models:
-
-```bash
-ollama run llama3
-ollama pull nomic-embed-text
-```
-
-### 2. Database Configuration
-
-Initialize a PostgreSQL instance and install the vector extension:
-
+### 1. Database Setup
 ```sql
 CREATE DATABASE campusgpt;
 \c campusgpt
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-### 3. Backend Setup
-
-Navigate to the `backend` directory.
-
-Establish your environmental variables based on the template:
-
+### 2. Backend
 ```bash
-cp .env.example .env
+cd backend
+
+# Copy env config
+cp .env.example application-local.properties
+# Edit application.properties with your DB credentials and JWT secret
+
+# Build with bundled Maven (requires JAVA_HOME = Java 17)
+export JAVA_HOME=/path/to/jdk17
+./apache-maven-3.9.6/bin/mvn clean package -DskipTests
+
+# Run
+./apache-maven-3.9.6/bin/mvn spring-boot:run
+# → Backend on http://localhost:8080
 ```
 
-Configure the `.env` file with your database credentials. Ensure you replace `JWT_SECRET` with a robust 256-bit secure key. 
-
-Clean, package, and execute the application:
-
+### 3. Frontend
 ```bash
-./mvnw clean install
-./mvnw spring-boot:run
-```
-
-The server binds to `http://localhost:8080/`. Note: Spring Data JPA will automatically build your schema utilizing `hibernate/ddl-auto: update`.
-
-### 4. Frontend Setup 
-
-Navigate to the `frontend` directory.
-
-```bash
+cd frontend
 npm install
 npm run dev
+# → Frontend on http://localhost:5173
 ```
 
-The Vite development server will start the application at `http://localhost:5173/`. 
+Performance note:
+- The repo now defaults to `llama3.2:3b` for better local latency while keeping good answer quality.
+- If you want heavier answers and can tolerate slower responses, set `OLLAMA_MODEL=llama3`.
 
-## Project Structure
+## API Reference
 
-### Backend Core Layout (`com.campusgpt`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/signup` | No | Register new user |
+| POST | `/api/auth/login` | No | Login, returns JWT + streakCount |
+| POST | `/api/documents` | Yes | Upload + index PDF |
+| GET | `/api/documents` | Yes | List user's documents |
+| DELETE | `/api/documents/{id}` | Yes | Delete document |
+| GET | `/api/chat/stream` | Yes | SSE streaming RAG chat |
+| PUT | `/api/user/profile` | Yes | Update username/email |
+| PUT | `/api/user/password` | Yes | Change password |
 
-*   `auth`: Authentication flow, security configuration, and JWT lifecycle management.
-*   `chat`: Asynchronous SSE streaming controllers and the primary prompt engineering logic.
-*   `document`: Multipart PDF handling, extraction boundaries, and metadata management.
-*   `embedding`: Vectorization mechanics communicating with Ollama's local HTTP APIs.
-*   `security`: Hardening filters including `RateLimitFilter`, `SecurityHeadersFilter`, and input sanitization layers.
+## Features
 
-### Frontend Application Layout (`/src`)
+- **RAG Pipeline** — PDFs chunked, embedded via Ollama, stored in pgvector
+- **6 Smart Modes** — Explain Concept, 10-Mark, Short Notes, Viva, Revision Blast, Exam Strategy
+- **Study Streak** — Real activity tracking, updated on login + every chat session
+- **Settings** — Live profile and password update with JWT refresh
+- **Security** — BCrypt passwords, JWT auth, rate limiting, input sanitization
 
-*   `components`: Layout boundaries, layout shells (`AppLayout`), and UI primitives.
-*   `pages`: The foundational route handlers (`ChatPage`, `DashboardPage`, `SmartModesPage`).
-*   `services`: Axiom-based REST communication and fetch-based stream endpoints handling tokens.
-*   `context`: Application state boundary (authentication).
-*   `index.css`: The central CSS root enforcing the neo-glass styling paradigms.
+## Environment Variables
 
-## Security Overview
-
-This project implements standard security mitigation requirements.
-
-*   **Input Handling Constraint**: Centralized parameter sanitization rejecting specific control characters and enforcing boundary limits, averting payload exhaustion and XSS patterns.
-*   **Abuse Prevention**: Distributed, in-memory Token Buckets implemented via `bucket4j`. Restricts repeated programmatic requests over critical endpoints.
-*   **Authentication Flow**: Standard Stateless JWT exchange using BCrypt password hashing.
-*   **Data Transport**: Headers hardened dynamically against MIME-type sniffing, Clickjacking, and Cross-Site Request Forgery paths.
-
-## Deployment Notes
-
-CampusGPT is built for an architecture involving discrete execution zones:
-
-1.  **AI Layer**: Requires GPU/Heavy compute. Suitable for EC2 Instances or Bare-metal setups capable of handling Ollama inference payloads.
-2.  **State Layer**: Requirements encompass a PostgreSQL instance capable of the `pgvector` extension. Managed instances like Supabase, AWS RDS, or Render are adequate. 
-3.  **Application Layer (Backend)**: Executable via containerization or PaaS platforms like Railway or Render, pointing back toward the State and AI layers. 
-4.  **Presentation Layer (Frontend)**: Standard static builds, suitable for execution on Vercel, Netlify, or standard CDN configurations. 
-
-When deploying, alter the `allowCredentials` and `allowedOrigins` parameters within `SecurityConfig.java` to match your production domain, and assign rigorous cryptographic strings within your `.env` configuration.
-
-## License
-
-This application is provided as-is without warranty for academic and open-source operations. Codebase configuration may vary per environment deployment. 
+```
+# backend/.env.example — DB, JWT, and Ollama config
+# frontend/.env.example — VITE_API_BASE_URL
+```
