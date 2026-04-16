@@ -2,7 +2,7 @@ import axios from 'axios';
 
 /**
  * Axios instance pre-configured for the CampusGPT backend.
- * - Base URL set to /api (proxied to http://localhost:8080 by Vite in dev)
+ * - Base URL set to /api (proxied by Vite in dev)
  * - Request interceptor automatically adds the JWT Bearer token
  * - Response interceptor redirects to /login on 401 Unauthorized
  */

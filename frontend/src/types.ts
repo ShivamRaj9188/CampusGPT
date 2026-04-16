@@ -4,12 +4,23 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  streakCount?: number;
+  aiConfidence?: number;
 }
 
 export interface AuthResponse {
   token: string;
   username: string;
   email: string;
+  streakCount: number;
+  aiConfidence: number;
+}
+
+export interface UserProfileResponse {
+  username: string;
+  email: string;
+  streakCount: number;
+  aiConfidence: number;
 }
 
 export interface Document {
@@ -38,35 +49,60 @@ export interface Message {
 }
 
 /** Display labels and descriptions for each mode */
-export const CHAT_MODES: Record<ChatMode, { label: string; emoji: string; description: string }> = {
+export const CHAT_MODES: Record<ChatMode, {
+  label: string;
+  iconName: string;
+  description: string;
+  color: string;
+  tags: string[];
+  useCase: string;
+}> = {
   EXPLAIN_CONCEPT: {
     label: 'Explain Concept',
-    emoji: '💡',
+    iconName: 'Lightbulb',
     description: 'Clear explanation with analogies',
+    color: '#00ff9d',
+    tags: ['Deep Learning', 'Analogies', 'Examples'],
+    useCase: 'Best for understanding new or difficult concepts',
   },
   TEN_MARK: {
     label: '10-Mark Answer',
-    emoji: '📝',
+    iconName: 'FileText',
     description: 'Structured exam-ready answer',
+    color: '#00c8ff',
+    tags: ['Exam Ready', 'Structured', '10 Marks'],
+    useCase: 'Best for university exam preparation',
   },
   SHORT_NOTES: {
     label: 'Short Notes',
-    emoji: '⚡',
+    iconName: 'Zap',
     description: 'Bullet-point quick revision',
+    color: '#a259ff',
+    tags: ['Bullet Points', 'Quick Revision', 'Key Terms'],
+    useCase: 'Best for rapid revision before exams',
   },
   VIVA: {
     label: 'Viva Questions',
-    emoji: '🎤',
+    iconName: 'Mic',
     description: 'Q&A for oral exams',
+    color: '#ff6b35',
+    tags: ['Oral Exam', 'Q&A Format', 'Interview Prep'],
+    useCase: 'Best for lab viva and oral examinations',
   },
   REVISION_BLAST: {
     label: 'Revision Blast',
-    emoji: '🚀',
+    iconName: 'Rocket',
     description: 'Ultra-fast key-point summary',
+    color: '#fbbf24',
+    tags: ['Speed Study', 'Key Points', 'Rapid'],
+    useCase: 'Best for day-before exam revision',
   },
   EXAM_STRATEGY: {
     label: 'Exam Strategy',
-    emoji: '🎯',
+    iconName: 'Target',
     description: 'Topic prioritization & planning',
+    color: '#ec4899',
+    tags: ['Strategy', 'PYQ Analysis', 'Time Plan'],
+    useCase: 'Best for exam planning and prioritization',
   },
 };
