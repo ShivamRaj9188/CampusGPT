@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, MessageSquare, Upload, FileText,
   Zap, Settings, LogOut, GraduationCap, ChevronRight,
-  User, Flame, Clock, TrendingUp, Quote
+  User, Flame, TrendingUp, Library, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDocuments } from '../hooks/useDocuments';
 
 const NAV_ITEMS = [
   { path: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
@@ -19,8 +20,11 @@ const NAV_ITEMS = [
 /** Shared app shell: sidebar + main content + right utility panel */
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const { documents } = useDocuments();
   const navigate = useNavigate();
   const location = useLocation();
+  const categories = Array.from(new Set(documents.map((document) => document.category))).slice(0, 3);
+  const subjectCount = new Set(documents.map((document) => document.category)).size;
 
   return (
     <div className="h-screen flex bg-bg-base overflow-hidden relative">
@@ -73,7 +77,8 @@ export function AppLayout() {
             <p className="text-xs font-medium px-3 mb-3" style={{ color: '#3a3a3a', letterSpacing: '0.08em' }}>
               SYSTEM
             </p>
-            <button className="nav-item w-full">
+            <button onClick={() => navigate('/settings')}
+                    className={`nav-item w-full ${location.pathname === '/settings' ? 'active' : ''}`}>
               <Settings className="w-4 h-4" />
               <span>Settings</span>
             </button>
@@ -120,20 +125,32 @@ export function AppLayout() {
       {/* ── Right Utility Panel ──────────────────────────────────────── */}
       <aside className="w-64 flex-shrink-0 flex flex-col z-10 overflow-y-auto"
              style={{ background: '#0a0a0a', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
-        <RightPanel />
+        <RightPanel
+          streakCount={user?.streakCount || 0}
+          aiConfidence={user?.aiConfidence || 0}
+          documentCount={documents.length}
+          subjectCount={subjectCount}
+          categories={categories}
+        />
       </aside>
     </div>
   );
 }
 
 /** Right mini-widget panel */
-function RightPanel() {
-  const studyStreak   = 7;    // mock data
-  const daysToExam    = 12;
-  const aiConfidence  = 87;   // percent
-
-  const dailyQuote = "The expert in anything was once a beginner.";
-
+function RightPanel({
+  streakCount,
+  aiConfidence,
+  documentCount,
+  subjectCount,
+  categories,
+}: {
+  streakCount: number;
+  aiConfidence: number;
+  documentCount: number;
+  subjectCount: number;
+  categories: string[];
+}) {
   return (
     <div className="p-4 space-y-4">
       <p className="text-xs font-medium px-1 pt-1" style={{ color: '#3a3a3a', letterSpacing: '0.08em' }}>
@@ -147,24 +164,36 @@ function RightPanel() {
             <Flame className="w-4 h-4" style={{ color: '#ff6b35' }} />
             <span className="text-xs font-medium text-white">Study Streak</span>
           </div>
-          <span className="text-xs font-bold" style={{ color: '#ff6b35' }}>🔥 {studyStreak}d</span>
+          <motion.div 
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(255, 107, 53, 0.1)', border: '1px solid rgba(255, 107, 53, 0.2)' }}
+          >
+            <Flame className="w-3 h-3" style={{ color: '#ff6b35' }} />
+            <span className="text-xs font-bold" style={{ color: '#ff6b35' }}>{streakCount}d</span>
+          </motion.div>
         </div>
         <div className="flex gap-1 mt-2">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex-1 h-1.5 rounded-full"
-                 style={{ background: i < studyStreak ? '#ff6b35' : 'rgba(255,255,255,0.06)' }} />
+                 style={{ background: i < streakCount ? '#ff6b35' : 'rgba(255,255,255,0.06)' }} />
           ))}
         </div>
       </div>
 
-      {/* Exam Countdown */}
+      {/* Knowledge Base */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-2 mb-2">
-          <Clock className="w-4 h-4" style={{ color: '#00c8ff' }} />
-          <span className="text-xs font-medium text-white">Next Exam</span>
+          <Library className="w-4 h-4" style={{ color: '#00c8ff' }} />
+          <span className="text-xs font-medium text-white">Knowledge Base</span>
         </div>
-        <p className="text-2xl font-bold" style={{ color: '#00c8ff' }}>{daysToExam}<span className="text-sm font-normal text-[#5a5a5a] ml-1">days</span></p>
-        <p className="text-xs mt-1" style={{ color: '#3a3a3a' }}>Keep the streak going!</p>
+        <p className="text-2xl font-bold" style={{ color: '#00c8ff' }}>
+          {documentCount}<span className="text-sm font-normal text-[#5a5a5a] ml-1">docs</span>
+        </p>
+        <p className="text-xs mt-1" style={{ color: '#3a3a3a' }}>
+          {subjectCount} subject{subjectCount === 1 ? '' : 's'} indexed for retrieval
+        </p>
       </div>
 
       {/* AI Confidence Meter */}
@@ -185,31 +214,27 @@ function RightPanel() {
             style={{ background: 'linear-gradient(to right, #00ff9d, #00c8ff)' }}
           />
         </div>
-        <p className="text-xs mt-2" style={{ color: '#3a3a3a' }}>Based on RAG retrieval quality</p>
+        <p className="text-xs mt-2" style={{ color: '#3a3a3a' }}>
+          {documentCount > 0
+            ? 'Based on recent RAG retrieval similarity'
+            : 'Available after you upload material and run chat queries'}
+        </p>
       </div>
 
-      {/* Daily Quote */}
+      {/* Active Subjects */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-2 mb-2">
-          <Quote className="w-4 h-4" style={{ color: '#a259ff' }} />
-          <span className="text-xs font-medium text-white">Daily Quote</span>
+          <BookOpen className="w-4 h-4" style={{ color: '#a259ff' }} />
+          <span className="text-xs font-medium text-white">Active Subjects</span>
         </div>
-        <p className="text-xs leading-relaxed italic" style={{ color: '#707070' }}>"{dailyQuote}"</p>
-      </div>
-
-      {/* Waveform AI indicator */}
-      <div className="glass-card p-4">
-        <p className="text-xs font-medium text-white mb-3">AI Status</p>
-        <div className="flex items-center gap-3">
-          <div className="flex items-end gap-0.5 h-6">
-            {[1,2,3,4,5].map((_, i) => (
-              <div key={i} className="wave-bar" style={{ animationDelay: `${i * 0.1}s` }} />
-            ))}
-          </div>
-          <div>
-            <p className="text-xs font-medium" style={{ color: '#00ff9d' }}>llama3 Online</p>
-            <p className="text-xs" style={{ color: '#3a3a3a' }}>RAG pipeline ready</p>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {categories.length > 0 ? categories.map((category) => (
+            <span key={category} className="badge-dim text-xs">{category}</span>
+          )) : (
+            <p className="text-xs leading-relaxed" style={{ color: '#707070' }}>
+              Upload study material to populate your active subjects.
+            </p>
+          )}
         </div>
       </div>
     </div>
