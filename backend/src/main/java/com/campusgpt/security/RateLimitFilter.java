@@ -120,7 +120,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
      */
     private Bucket buildPublicBucket() {
         return Bucket.builder()
-                .addLimit(Bandwidth.simple(publicCapacity, Duration.ofMinutes(publicRefillMinutes)))
+                .addLimit(Bandwidth.builder()
+                        .capacity(publicCapacity)
+                        .refillGreedy(publicCapacity, Duration.ofMinutes(publicRefillMinutes))
+                        .build())
                 .build();
     }
 
@@ -129,7 +132,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
      */
     private Bucket buildAuthenticatedBucket() {
         return Bucket.builder()
-                .addLimit(Bandwidth.simple(authCapacity, Duration.ofMinutes(authRefillMinutes)))
+                .addLimit(Bandwidth.builder()
+                        .capacity(authCapacity)
+                        .refillGreedy(authCapacity, Duration.ofMinutes(authRefillMinutes))
+                        .build())
                 .build();
     }
 
