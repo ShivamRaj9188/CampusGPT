@@ -12,6 +12,44 @@
 | AI | Ollama (llama3.2:3b + nomic-embed-text) |
 | Architecture | RAG pipeline (PDF → chunks → embeddings → vector search → LLM) |
 
+## Architecture Overview
+
+CampusGPT is built on a modular, three-tier architecture designed for local execution and data privacy.
+
+| Layer | Component | Responsibility |
+|-------|-----------|----------------|
+| **Presentation** | React / Tailwind | Responsive, glassmorphism-themed user interface. |
+| **Logic** | Spring Boot | Orchestrates RAG workflows, authentication, and session management. |
+| **Persistence** | PostgreSQL | Stores document metadata and high-dimensional vectors. |
+| **Intelligence** | Ollama | Local inference for embeddings and LLM responses. |
+
+## System Flow
+
+The following diagram illustrates the Retrieval-Augmented Generation (RAG) lifecycle, from document ingestion to contextual response generation.
+
+```mermaid
+graph TD
+    subgraph Ingestion
+    A[PDF Document] --> B[Text Extraction]
+    B --> C[Overlapping Chunking]
+    C --> D[Vector Embedding]
+    D --> E[(pgvector Storage)]
+    end
+
+    subgraph Retrieval
+    F[User Question] --> G[Query Embedding]
+    G --> H[Similarity Search]
+    H --> E
+    E --> I[Top-K Context]
+    end
+
+    subgraph Generation
+    I --> J[Prompt Augmentation]
+    J --> K[Ollama LLM]
+    K --> L[SSE Streaming Output]
+    end
+```
+
 ## Quick Start
 
 ### Prerequisites
@@ -75,6 +113,22 @@ Performance note:
 - **Study Streak** — Real activity tracking, updated on login + every chat session
 - **Settings** — Live profile and password update with JWT refresh
 - **Security** — BCrypt passwords, JWT auth, rate limiting, input sanitization
+
+## Project Structure
+
+The repository is organized into distinct frontend and backend modules to separate concerns and facilitate independent scaling.
+
+```text
+Root
+├── backend/                Spring Boot Application
+│   ├── src/main/java/      Source code (Auth, Chat, Document, Security)
+│   ├── src/main/resources/ Configuration and environment templates
+│   └── pom.xml             Dependency management
+└── frontend/               React Application
+    ├── src/                Components, hooks, pages, and context
+    ├── public/             Static assets
+    └── package.json        Frontend dependencies and scripts
+```
 
 ## Environment Variables
 
