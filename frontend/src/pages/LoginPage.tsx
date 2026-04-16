@@ -32,7 +32,7 @@ export default function LoginPage() {
       const res = mode === 'signup'
         ? await authService.signup(username, email, password)
         : await authService.login(username, password);
-      login(res.token, res.username, res.email);
+      login(res.token, res.username, res.email, res.streakCount, res.aiConfidence);
       navigate('/dashboard');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string; details?: Record<string,string> } } };
