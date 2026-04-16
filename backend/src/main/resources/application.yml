@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  # ─── PostgreSQL Datasource ───────────────────────────────────────────────────
+  # OWASP A02: Cryptographic Failures — never hard-code credentials.
+  # Set DB_URL, DB_USERNAME, DB_PASSWORD as environment variables (see .env.example).
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/campusgpt}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  # ─── JPA / Hibernate ─────────────────────────────────────────────────────────
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false            # Never expose SQL in production logs
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  # ─── SQL Initialization ───────────────────────────────────────────────────────
+  sql:
+    init:
+      mode: always
+
+  # ─── Multipart Upload ─────────────────────────────────────────────────────────
+  # Limits enforced here + again in DocumentController for defense-in-depth
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:20MB}
+      max-request-size: ${MAX_UPLOAD_SIZE:20MB}
+
+# ─── JWT Configuration ─────────────────────────────────────────────────────────
+# OWASP A02: JWT_SECRET MUST be set via environment variable in production.
+# Minimum 32 characters, randomly generated (e.g. openssl rand -base64 64).
+# The default below is for LOCAL DEVELOPMENT ONLY — never use in production.
+jwt:
+  secret: ${JWT_SECRET:campusgpt-local-dev-secret-key-min32chars-replace-me}
+  expiration: ${JWT_EXPIRATION:86400000}   # 24h default; reduce to 3600000 (1h) in prod
+
+# ─── Ollama (Local LLM) Configuration ─────────────────────────────────────────
+# No API key needed for local Ollama — but set OLLAMA_BASE_URL if hosted remotely.
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  model: ${OLLAMA_MODEL:llama3}
+  embedding-model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+  embedding-dimension: 768
+
+# ─── Rate Limiting Configuration ──────────────────────────────────────────────
+rate-limit:
+  # Public endpoints (login/signup): OWASP recommends strict limits to prevent
+  # brute-force and credential-stuffing attacks (OWASP A07)
+  public:
+    capacity: ${RL_PUBLIC_CAPACITY:10}          # Max 10 requests
+    refill-minutes: ${RL_PUBLIC_REFILL:1}       # Per 1 minute, per IP
+  # Authenticated endpoints: more permissive but still bounded
+  authenticated:
+    capacity: ${RL_AUTH_CAPACITY:60}            # Max 60 requests
+    refill-minutes: ${RL_AUTH_REFILL:1}         # Per 1 minute, per IP
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.campusgpt: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+    # Never log DEBUG in production (may expose tokens/payloads)
