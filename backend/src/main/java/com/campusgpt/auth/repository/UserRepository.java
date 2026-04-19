@@ -20,4 +20,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     /** Check if an email is already registered */
     boolean existsByEmail(String email);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE UserEntity u SET u.streakCount = 0 WHERE u.lastActivityAt < :threshold")
+    int resetExpiredStreaks(@org.springframework.data.repository.query.Param("threshold") java.time.LocalDateTime threshold);
 }

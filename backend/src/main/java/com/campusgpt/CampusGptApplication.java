@@ -3,6 +3,8 @@ package com.campusgpt;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 /**
  * CampusGPT — AI-powered College Assistant
  *
@@ -15,6 +17,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *  - Retrieval-Augmented Generation (RAG) pipeline
  */
 @SpringBootApplication
+@EnableScheduling
 public class CampusGptApplication {
 
     public static void main(String[] args) {

@@ -67,6 +67,7 @@ public class DocumentService {
             byte[] pdfBytes = file.getBytes();
             try (PDDocument pdfDoc = Loader.loadPDF(pdfBytes)) {
                 PDFTextStripper stripper = new PDFTextStripper();
+                stripper.setSortByPosition(true);
                 rawText = stripper.getText(pdfDoc);
             }
             log.info("Extracted {} characters from PDF: {}", rawText.length(), file.getOriginalFilename());

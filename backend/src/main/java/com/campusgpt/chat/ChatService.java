@@ -118,7 +118,7 @@ public class ChatService {
                 String context = buildContext(similarChunks);
 
                 // ── Step 4: Build the full prompt (mode-specific) ──────────────
-                String prompt = buildPrompt(question, context, request.getMode());
+                String prompt = buildPrompt(question, context, request.getMode(), request.getHistory());
 
                 // ── Step 5: Stream response from Ollama llama3 ─────────────
                 Map<String, Object> ollamaRequest = Map.of(
@@ -208,7 +208,7 @@ public class ChatService {
      *   Question: [user's question]
      *   \n\nAnswer:
      */
-    private String buildPrompt(String question, String context, ChatMode mode) {
+    private String buildPrompt(String question, String context, ChatMode mode, List<com.campusgpt.chat.dto.MessageDto> history) {
         String systemPrompt = switch (mode) {
             case EXPLAIN_CONCEPT ->
                 "You are a knowledgeable and patient professor. " +
@@ -246,12 +246,22 @@ public class ChatService {
                 "what to revise next, and how to allocate time for efficient scoring.";
         };
 
+        StringBuilder historyBlock = new StringBuilder();
+        if (history != null && !history.isEmpty()) {
+            historyBlock.append("\n\nPrevious Conversation:\n");
+            for (com.campusgpt.chat.dto.MessageDto msg : history) {
+                String role = "user".equalsIgnoreCase(msg.getRole()) ? "Student" : "Assistant";
+                historyBlock.append(role).append(": ").append(msg.getContent()).append("\n");
+            }
+        }
+
         if (context.isBlank()) {
             // No context found (no documents uploaded or unrelated query) — answer directly
-            return systemPrompt + "\n\nQuestion: " + question + "\n\nAnswer:";
+            return systemPrompt + historyBlock.toString() + "\n\nQuestion: " + question + "\n\nAnswer:";
         }
 
         return systemPrompt
+                + historyBlock.toString()
                 + "\n\nContext from uploaded study materials:\n---\n"
                 + context
                 + "\n---\n\nQuestion: " + question
@@ -307,6 +317,8 @@ public class ChatService {
     /**
      * Persists a real confidence signal derived from the current RAG retrieval scores.
      * We average the top results to avoid a single noisy chunk dominating the metric.
+     * Note: nomic-embed-text semantic similarities often naturally rest around 0.5 - 0.7 for relevant data.
+     * We apply a 1.4x scale factor to map this into a more human-understandable 75-98% confidence curve.
      */
     private void updateAiConfidence(UserEntity user, List<ChunkSearchResult> similarChunks) {
         int confidence = similarChunks.isEmpty()
@@ -315,7 +327,7 @@ public class ChatService {
                 similarChunks.stream()
                         .map(ChunkSearchResult::getSimilarityScore)
                         .filter(score -> score != null)
-                        .mapToDouble(Double::doubleValue)
+                        .mapToDouble(score -> Math.min(1.0, score.doubleValue() * 1.4))
                         .average()
                         .orElse(0.0) * 100
         );

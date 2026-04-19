@@ -32,7 +32,7 @@ export function AppLayout() {
       <div className="particle-bg" />
 
       {/* ── Sidebar ──────────────────────────────────────────────────── */}
-      <aside className="w-60 flex-shrink-0 flex flex-col z-10"
+      <aside className="hidden md:flex w-60 flex-shrink-0 flex-col z-10"
              style={{ background: '#0a0a0a', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
 
         {/* Logo */}
@@ -123,7 +123,7 @@ export function AppLayout() {
       </main>
 
       {/* ── Right Utility Panel ──────────────────────────────────────── */}
-      <aside className="w-64 flex-shrink-0 flex flex-col z-10 overflow-y-auto"
+      <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col z-10 overflow-y-auto"
              style={{ background: '#0a0a0a', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
         <RightPanel
           streakCount={user?.streakCount || 0}
@@ -133,6 +133,30 @@ export function AppLayout() {
           categories={categories}
         />
       </aside>
+
+      {/* ── Mobile Bottom Nav ──────────────────────────────────────── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 flex items-center justify-around px-4 py-3 border-t z-50 transition-all duration-300 backdrop-blur-md"
+           style={{ background: 'rgba(10, 10, 10, 0.85)', borderColor: 'rgba(255,255,255,0.05)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
+        {NAV_ITEMS.slice(0, 4).map(({ path, label, icon: Icon }) => {
+          const active = location.pathname === path;
+          return (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              className="flex flex-col items-center gap-1.5 p-2 transition-all duration-200"
+              style={{ color: active ? '#00ff9d' : '#5a5a5a' }}
+            >
+              <div className="relative">
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'scale-110' : ''}`} />
+                {active && (
+                  <span className="absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 w-1 h-1 rounded-full bg-[#00ff9d] shadow-[0_0_8px_#00ff9d]" />
+                )}
+              </div>
+              <span className={`text-[10px] font-medium tracking-wide ${active ? 'opacity-100' : 'opacity-80'}`}>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

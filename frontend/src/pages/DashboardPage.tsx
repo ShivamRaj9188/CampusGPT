@@ -80,7 +80,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard value={documents.length} label="PDFs Uploaded" icon={<FileText className="w-4 h-4" />} color="#00ff9d" delay={0.05} />
         <StatCard value={uniqueSubjects} label="Subjects Indexed" icon={<BookOpen className="w-4 h-4" />} color="#00c8ff" delay={0.1} />
         <StatCard value={totalChunks} label="Chunks Indexed" icon={<Zap className="w-4 h-4" />} color="#a259ff" delay={0.15} />

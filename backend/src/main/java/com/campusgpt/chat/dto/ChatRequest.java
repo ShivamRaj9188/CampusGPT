@@ -32,4 +32,10 @@ public class ChatRequest {
      */
     @NotNull(message = "Mode is required (EXPLAIN_CONCEPT, TEN_MARK, or SHORT_NOTES)")
     private ChatMode mode;
+
+    /**
+     * Optional multi-turn chat history.
+     * Contains recent previous messages to maintain context across API calls.
+     */
+    private java.util.List<MessageDto> history;
 }

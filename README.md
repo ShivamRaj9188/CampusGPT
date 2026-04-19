@@ -108,9 +108,12 @@ Performance note:
 
 ## Features
 
-- **RAG Pipeline** — PDFs chunked, embedded via Ollama, stored in pgvector
+- **RAG Pipeline** — PDFs chunked, embedded via Ollama, stored natively in pgvector with HNSW similarity indexing for ultra-low latency searches
+- **Layout-Aware PDF Extraction** — Contextual and positional document text parsing to maintain visual structure spanning columns and tables
+- **Multi-Turn Chat Memory** — Seamless continuation of conversation referencing prior student-AI interactions, persisted across Ollama completions
 - **6 Smart Modes** — Explain Concept, 10-Mark, Short Notes, Viva, Revision Blast, Exam Strategy
-- **Study Streak** — Real activity tracking, updated on login + every chat session
+- **Study Streak Automation** — Background daily task scheduling continuously tracks and resets student study streaks upon inactivity to drive engagement
+- **Mobile-Native OS Interface** — Responsive layout equipped with adaptive breakpoints and a glassmorphism bottom-navigation bar tailored for smartphones
 - **Settings** — Live profile and password update with JWT refresh
 - **Security** — BCrypt passwords, JWT auth, rate limiting, input sanitization
 

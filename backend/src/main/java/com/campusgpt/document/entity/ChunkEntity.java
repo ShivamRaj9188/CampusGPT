@@ -45,7 +45,8 @@ public class ChunkEntity {
      * Format: "[0.12345, -0.98765, ...]" — 768 dimensions (nomic-embed-text).
      * At query time, cast with ::vector for cosine similarity: embedding::vector <=> query::vector
      */
-    @Column(name = "embedding", columnDefinition = "TEXT")
+    @Column(name = "embedding", columnDefinition = "vector(768)")
+    @org.hibernate.annotations.ColumnTransformer(read = "embedding::text", write = "?::vector")
     private String embedding;
 
     @Column(name = "created_at", updatable = false)

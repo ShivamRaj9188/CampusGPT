@@ -20,6 +20,7 @@ export const chatService = {
    *
    * @param question  The user's question
    * @param mode      The smart mode (EXPLAIN_CONCEPT | TEN_MARK | SHORT_NOTES)
+   * @param history   Recent chat history to pass for multi-turn context
    * @param onToken   Callback called with each streamed token
    * @param onDone    Callback called when streaming is complete
    * @param onError   Callback called with an error message if streaming fails
@@ -28,6 +29,7 @@ export const chatService = {
   stream: (
     question: string,
     mode: ChatMode,
+    history: { role: string; content: string }[],
     onToken: (token: string) => void,
     onDone: () => void,
     onError: (message: string) => void
@@ -44,7 +46,7 @@ export const chatService = {
             'Authorization': `Bearer ${token}`,
             'Accept': 'text/event-stream',
           },
-          body: JSON.stringify({ question, mode }),
+          body: JSON.stringify({ question, mode, history }),
           signal: controller.signal,
         });
 

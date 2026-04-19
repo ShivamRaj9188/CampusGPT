@@ -71,9 +71,11 @@ export default function ChatPage() {
     setIsStreaming(true);
     const aiId = aiMsg.id;
 
+    const historyPayload = messages.slice(-4).map(m => ({ role: m.role, content: m.content }));
+
     abortRef.current?.abort();
     abortRef.current = chatService.stream(
-      q, mode,
+      q, mode, historyPayload,
       (token) => setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: m.content + token } : m)),
       ()      => {
         setMessages(prev => prev.map(m => m.id === aiId ? { ...m, isStreaming: false } : m));
