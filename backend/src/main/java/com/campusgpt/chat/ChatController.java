@@ -5,8 +5,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.List;
+import java.util.Map;
 
 import java.security.Principal;
 
@@ -56,7 +60,25 @@ public class ChatController {
 
         // Delegate to ChatService (runs async, streams tokens back via emitter)
         chatService.streamChat(request, principal.getName(), emitter);
-
         return emitter;
+    }
+
+    /**
+     * GET /api/chat/history
+     * Returns the user's persistent chat history.
+     */
+    @GetMapping("/chat/history")
+    public ResponseEntity<List<com.campusgpt.chat.entity.ChatMessageEntity>> getHistory(Principal principal) {
+        return ResponseEntity.ok(chatService.getHistory(principal.getName()));
+    }
+
+    /**
+     * DELETE /api/chat/history
+     * Clears all chat history for the user.
+     */
+    @DeleteMapping("/chat/history")
+    public ResponseEntity<Map<String, String>> clearHistory(Principal principal) {
+        chatService.clearHistory(principal.getName());
+        return ResponseEntity.ok(Map.of("message", "History cleared"));
     }
 }
