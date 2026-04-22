@@ -2,13 +2,52 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { 
-  Send, StopCircle, Bot, User, Sparkles, Plus,
+  Send, StopCircle, Bot, User, Sparkles, Trash2,
   AlertTriangle, Lightbulb, FileText, Zap, Mic, Rocket, Target 
 } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 import { chatService } from '../services/chatService';
 import { Message, ChatMode, CHAT_MODES } from '../types';
 import { useAuth } from '../context/AuthContext';
+
+// Simple tooltip-capable pill
+const MetricPill: React.FC<{ label: string; value: string; status?: 'good'|'warn'|'bad'; tooltip?: string }> = ({ label, value, status }) => (
+  <div className="flex flex-col px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }} title={value}>
+    <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#707070' }}>{label}</span>
+    <span className="text-xs font-semibold" style={{ color: status === 'bad' ? '#ff6b35' : status === 'warn' ? '#fbbf24' : '#00ff9d' }}>{value}</span>
+  </div>
+);
+
+const MatchTypeBadge: React.FC<{ breakdown: any }> = ({ breakdown }) => {
+  const total = breakdown.semantic + breakdown.keyword + breakdown.hybrid;
+  if (!total) return null;
+  return (
+    <div className="flex gap-2">
+      {breakdown.semantic > 0 && <MetricPill label="Semantic" value={breakdown.semantic.toString()} />}
+      {breakdown.keyword > 0 && <MetricPill label="Keyword" value={breakdown.keyword.toString()} />}
+      {breakdown.hybrid > 0 && <MetricPill label="Hybrid" value={breakdown.hybrid.toString()} />}
+    </div>
+  );
+};
+
+const RetrievalMetricsBar: React.FC<{ metrics: any }> = ({ metrics }) => (
+  <div className="flex flex-wrap gap-2 mt-2 mb-1 p-2 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
+    <MetricPill
+      label="Latency"
+      value={`${metrics.latencyMs}ms`}
+      status={metrics.latencyMs < 200 ? 'good' : metrics.latencyMs < 500 ? 'warn' : 'bad'}
+    />
+    <MetricPill
+      label="Filter Funnel"
+      value={`${metrics.chunksAfterSearch} → ${metrics.chunksInContext}`}
+    />
+    <MetricPill
+      label="Top Match Score"
+      value={`${(metrics.topRrfScore * 100).toFixed(1)}%`}
+    />
+    <MatchTypeBadge breakdown={metrics.matchTypeBreakdown} />
+  </div>
+);
 
 // Map icon string names back to Lucide components
 const ModeIcons: Record<string, React.ElementType> = {
@@ -52,6 +91,28 @@ export default function ChatPage() {
   const bottomRef                     = useRef<HTMLDivElement>(null);
   const textareaRef                   = useRef<HTMLTextAreaElement>(null);
 
+  // Load persistent history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await chatService.getHistory();
+        if (history && history.length > 0) {
+          // Reverse because backend returns Descending (newest first)
+          const formatted = history.reverse().map(h => ({
+            id: uid(),
+            role: h.role as 'user' | 'assistant',
+            content: h.content,
+            timestamp: new Date(h.createdAt)
+          }));
+          setMessages(formatted);
+        }
+      } catch (err) {
+        console.error('Failed to load history:', err);
+      }
+    };
+    void loadHistory();
+  }, []);
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   useEffect(() => {
     if (textareaRef.current) {
@@ -71,12 +132,13 @@ export default function ChatPage() {
     setIsStreaming(true);
     const aiId = aiMsg.id;
 
-    const historyPayload = messages.slice(-4).map(m => ({ role: m.role, content: m.content }));
+    const historyPayload = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
     abortRef.current?.abort();
     abortRef.current = chatService.stream(
       q, mode, historyPayload,
       (token) => setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: m.content + token } : m)),
+      (metrics) => setMessages(prev => prev.map(m => m.id === aiId ? { ...m, metrics } : m)),
       ()      => {
         setMessages(prev => prev.map(m => m.id === aiId ? { ...m, isStreaming: false } : m));
         setIsStreaming(false);
@@ -90,6 +152,16 @@ export default function ChatPage() {
   }, [input, isStreaming, mode]);
 
   const stop = () => { abortRef.current?.abort(); setIsStreaming(false); setMessages(prev => prev.map(m => m.isStreaming ? { ...m, isStreaming: false } : m)); };
+
+  const clearHistory = async () => {
+    if (!window.confirm('Are you sure you want to clear your chat history?')) return;
+    try {
+      await chatService.clearHistory();
+      setMessages([]);
+    } catch (err) {
+      console.error('Failed to clear history:', err);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -131,10 +203,13 @@ export default function ChatPage() {
               );
             })}
           </div>
-
-          <button className="btn-ghost py-2 px-3 text-xs gap-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            New
+          
+          <button 
+            onClick={clearHistory}
+            className="p-2 rounded-xl transition-colors hover:bg-red-500/10 text-[#3a3a3a] hover:text-red-400"
+            title="Clear Chat History"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -214,6 +289,7 @@ export default function ChatPage() {
               } : {}}>
                 {msg.role === 'assistant' ? (
                   <>
+                    {msg.metrics && msg.metrics.latencyMs > 0 && <RetrievalMetricsBar metrics={msg.metrics} />}
                     {msg.isStreaming && msg.content === '' ? (
                       <div className="flex gap-1.5 py-1">
                         <div className="typing-dot" />

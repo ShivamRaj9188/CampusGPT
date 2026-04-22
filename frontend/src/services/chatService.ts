@@ -24,6 +24,7 @@ export const chatService = {
    * @param onToken   Callback called with each streamed token
    * @param onDone    Callback called when streaming is complete
    * @param onError   Callback called with an error message if streaming fails
+   * @param onMetrics Callback called when pipeline metrics are received
    * @returns AbortController — call .abort() to cancel the stream
    */
   stream: (
@@ -31,6 +32,7 @@ export const chatService = {
     mode: ChatMode,
     history: { role: string; content: string }[],
     onToken: (token: string) => void,
+    onMetrics: (metrics: any) => void,
     onDone: () => void,
     onError: (message: string) => void
   ): AbortController => {
@@ -87,10 +89,18 @@ export const chatService = {
                 onDone();
                 return;
               } else if (content.startsWith('[ERROR]')) {
-                onError(content.replace('[ERROR] ', ''));
+                onError(content.replace('[ERROR]', '').trim());
                 return;
+              } else if (content.startsWith('[METRICS]')) {
+                try {
+                  const m = JSON.parse(content.replace('[METRICS]', '').trim());
+                  onMetrics(m);
+                } catch (e) {
+                  console.error('Failed to parse metrics', e);
+                }
               } else if (content) {
-                onToken(content);
+                // Decode newline placeholders safely 
+                onToken(content.replace(/\[NEW\]/g, '\n'));
               }
             }
           }
@@ -105,5 +115,33 @@ export const chatService = {
     })();
 
     return controller;
+  },
+
+  /**
+   * Fetches persistent chat history for the user.
+   */
+  getHistory: async (): Promise<{ role: string; content: string; createdAt: string }[]> => {
+    const token = localStorage.getItem('campusgpt_token');
+    const response = await fetch('/api/chat/history', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('Failed to fetch history');
+    return response.json();
+  },
+
+  /**
+   * Deletes all chat history for the user.
+   */
+  clearHistory: async (): Promise<void> => {
+    const token = localStorage.getItem('campusgpt_token');
+    const response = await fetch('/api/chat/history', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('Failed to clear history');
   },
 };

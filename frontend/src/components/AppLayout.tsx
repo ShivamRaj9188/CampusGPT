@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, MessageSquare, Upload, FileText,
   Zap, Settings, LogOut, GraduationCap, ChevronRight,
-  User, Flame, TrendingUp, Library, BookOpen
+  User, Flame, TrendingUp, Library, BookOpen, Plus, Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDocuments } from '../hooks/useDocuments';
+import { chatService } from '../services/chatService';
 
 const NAV_ITEMS = [
   { path: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
@@ -26,13 +27,28 @@ export function AppLayout() {
   const categories = Array.from(new Set(documents.map((document) => document.category))).slice(0, 3);
   const subjectCount = new Set(documents.map((document) => document.category)).size;
 
+  const [recentChats, setRecentChats] = React.useState<{role: string, content: string}[]>([]);
+
+  React.useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await chatService.getHistory();
+        // Filter for user messages to show as "session" titles
+        setRecentChats(history.filter(h => h.role === 'user').slice(0, 5));
+      } catch (err) {
+        console.error('Sidebar history load failed', err);
+      }
+    };
+    if (user) void loadHistory();
+  }, [user, location.pathname]); // Reload when moving to/from chat or logging in
+
   return (
     <div className="h-screen flex bg-bg-base overflow-hidden relative">
       {/* Ambient background particles */}
       <div className="particle-bg" />
 
       {/* ── Sidebar ──────────────────────────────────────────────────── */}
-      <aside className="hidden md:flex w-60 flex-shrink-0 flex-col z-10"
+      <aside className="hidden md:flex w-72 flex-shrink-0 flex-col z-10"
              style={{ background: '#0a0a0a', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
 
         {/* Logo */}
@@ -55,9 +71,18 @@ export function AppLayout() {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <p className="text-xs font-medium px-3 mb-3" style={{ color: '#3a3a3a', letterSpacing: '0.08em' }}>
-            WORKSPACE
-          </p>
+          <div className="flex items-center justify-between px-3 mb-3">
+            <p className="text-xs font-medium" style={{ color: '#3a3a3a', letterSpacing: '0.08em' }}>
+              WORKSPACE
+            </p>
+            <button 
+              onClick={() => navigate('/chat')}
+              className="p-1 rounded-md hover:bg-white/5 transition-colors"
+              title="New Chat"
+            >
+              <Plus className="w-3 h-3 text-[#3a3a3a]" />
+            </button>
+          </div>
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
             return (
@@ -72,6 +97,28 @@ export function AppLayout() {
               </button>
             );
           })}
+
+          {recentChats.length > 0 && (
+            <div className="pt-6 mt-2">
+              <p className="text-xs font-medium px-3 mb-3" style={{ color: '#3a3a3a', letterSpacing: '0.08em' }}>
+                RECENT HISTORY
+              </p>
+              <div className="space-y-1">
+                {recentChats.map((chat, i) => (
+                  <button
+                    key={i}
+                    onClick={() => navigate('/chat')}
+                    className="nav-item w-full py-2 group"
+                  >
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
+                    <span className="truncate text-[11px] opacity-70 group-hover:opacity-100 transition-opacity">
+                      {chat.content.length > 32 ? chat.content.slice(0, 32) + '...' : chat.content}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 mt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             <p className="text-xs font-medium px-3 mb-3" style={{ color: '#3a3a3a', letterSpacing: '0.08em' }}>
