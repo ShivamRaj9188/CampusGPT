@@ -32,6 +32,9 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'chunks') THEN " +
                 "    ALTER TABLE chunks ALTER COLUMN embedding TYPE vector(768) USING embedding::vector; " +
                 "    CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops); " +
+                "    UPDATE chunks SET user_id = d.user_id, category = d.category FROM documents d WHERE chunks.document_id = d.id AND chunks.user_id IS NULL; " +
+                "    CREATE INDEX IF NOT EXISTS idx_chunks_user_category ON chunks (user_id, category); " +
+                "    CREATE INDEX IF NOT EXISTS idx_chunks_gin_search ON chunks USING GIN (search_vector); " +
                 "  END IF; " +
                 "END $$;"
             );

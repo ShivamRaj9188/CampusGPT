@@ -32,6 +32,12 @@ public class ChunkEntity {
     @JoinColumn(name = "document_id", nullable = false)
     private DocumentEntity document;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "category", length = 100)
+    private String category;
+
     /** The actual text content of this chunk */
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -40,14 +46,22 @@ public class ChunkEntity {
     @Column(name = "chunk_index")
     private Integer chunkIndex;
 
-    /**
-     * Embedding vector stored as a pgvector-compatible TEXT string.
-     * Format: "[0.12345, -0.98765, ...]" — 768 dimensions (nomic-embed-text).
-     * At query time, cast with ::vector for cosine similarity: embedding::vector <=> query::vector
-     */
     @Column(name = "embedding", columnDefinition = "vector(768)")
     @org.hibernate.annotations.ColumnTransformer(read = "embedding::text", write = "?::vector")
     private String embedding;
+
+    @Column(name = "content_hash", length = 64, unique = true)
+    private String contentHash;
+
+    @Column(name = "section_index")
+    private Integer sectionIndex;
+
+    @Column(name = "page_number")
+    private Integer pageNumber;
+
+    @Column(name = "search_vector", columnDefinition = "tsvector",
+            insertable = false, updatable = false)
+    private String searchVector;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
