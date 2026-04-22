@@ -19,8 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.BreakIterator;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -86,37 +92,23 @@ public class DocumentService {
 
         DocumentEntity savedDoc = documentRepository.save(document);
 
-        // 3. Chunk the extracted text
-        List<String> chunks = chunkText(rawText);
-        log.info("Created {} chunks from document: {}", chunks.size(), file.getOriginalFilename());
+        // 3. Chunk the extracted text into entities (with NLP)
+        List<ChunkEntity> chunkEntities = buildChunkEntities(rawText, savedDoc);
+        log.info("Created {} distinct chunks from document: {}", chunkEntities.size(), file.getOriginalFilename());
 
-        // 4. Generate embeddings and build ChunkEntities
-        List<ChunkEntity> chunkEntities = new ArrayList<>();
-        for (int i = 0; i < chunks.size(); i++) {
-            String chunkText = chunks.get(i);
+        // 4. Generate embeddings for the new chunks
+        int validEmbeddings = 0;
+        for (ChunkEntity chunk : chunkEntities) {
             try {
                 // Generate embedding via Ollama nomic-embed-text
-                float[] embedding = embeddingService.embed(chunkText);
+                float[] embedding = embeddingService.embed(chunk.getContent());
                 String embeddingStr = embeddingService.vectorToString(embedding);
-
-                ChunkEntity chunk = ChunkEntity.builder()
-                        .document(savedDoc)
-                        .content(chunkText)
-                        .chunkIndex(i)
-                        .embedding(embeddingStr)
-                        .build();
-                chunkEntities.add(chunk);
-
+                chunk.setEmbedding(embeddingStr);
+                validEmbeddings++;
             } catch (Exception e) {
-                log.warn("Failed to embed chunk {} of {}: {}", i, file.getOriginalFilename(), e.getMessage());
+                log.warn("Failed to embed chunk of {}: {}", file.getOriginalFilename(), e.getMessage());
                 // Save chunk WITHOUT embedding (still useful for keyword context)
-                ChunkEntity chunk = ChunkEntity.builder()
-                        .document(savedDoc)
-                        .content(chunkText)
-                        .chunkIndex(i)
-                        .embedding(null)
-                        .build();
-                chunkEntities.add(chunk);
+                chunk.setEmbedding(null);
             }
         }
 
@@ -125,7 +117,8 @@ public class DocumentService {
         savedDoc.setChunkCount(chunkEntities.size());
         documentRepository.save(savedDoc);
 
-        log.info("Successfully processed document: {} ({} chunks)", file.getOriginalFilename(), chunkEntities.size());
+        log.info("Successfully processed document: {} ({} chunks, {} embedded)", 
+                 file.getOriginalFilename(), chunkEntities.size(), validEmbeddings);
         return DocumentResponse.from(savedDoc);
     }
 
@@ -157,33 +150,84 @@ public class DocumentService {
     // ─── Helper methods ───────────────────────────────────────────────────────
 
     /**
-     * Splits a long text into overlapping chunks.
-     *
-     * Example with CHUNK_SIZE=10, OVERLAP=3, text="ABCDEFGHIJKLMNO":
-     *   Chunk 0: "ABCDEFGHIJ"  (start=0)
-     *   Chunk 1: "HIJKLMNOPQ"  (start=7 = 10-3)
-     *   ...
-     *
-     * Overlap helps the LLM understand context at chunk boundaries.
+     * Splits a long text into overlapping chunks using NLP sentence boundaries.
+     * Overlap is 1 sentence. Includes deduplication logic.
      */
-    private List<String> chunkText(String text) {
-        List<String> chunks = new ArrayList<>();
-        int start = 0;
-        int step = CHUNK_SIZE - CHUNK_OVERLAP;
+    private List<ChunkEntity> buildChunkEntities(String text, DocumentEntity document) {
+        List<ChunkEntity> chunks = new ArrayList<>();
+        BreakIterator boundary = BreakIterator.getSentenceInstance(Locale.ENGLISH);
+        boundary.setText(text);
 
-        while (start < text.length()) {
-            int end = Math.min(start + CHUNK_SIZE, text.length());
-            String chunk = text.substring(start, end).trim();
+        int start = boundary.first();
+        int chunkStart = start;
+        int sentenceCount = 0;
+        int pageEstimate = 1;
+        int sectionIndex = 0;
+        int globalChunkIndex = 0;
 
-            if (!chunk.isBlank()) {
-                chunks.add(chunk);
+        for (int end = boundary.next(); end != BreakIterator.DONE; end = boundary.next()) {
+            sentenceCount++;
+
+            // Window: 5 sentences per chunk with 1-sentence overlap
+            if (sentenceCount >= 5) {
+                String chunkText = text.substring(chunkStart, end).trim();
+                if (!chunkText.isBlank()) {
+                    String hash = sha256(chunkText);
+
+                    // --- Deduplication guard: skip if hash already exists in DB ---
+                    if (!chunkRepository.existsByContentHash(hash)) {
+                        ChunkEntity chunk = new ChunkEntity();
+                        chunk.setDocument(document);
+                        chunk.setUserId(document.getUser().getId());
+                        chunk.setCategory(document.getCategory());
+                        chunk.setContent(chunkText);
+                        chunk.setContentHash(hash);
+                        chunk.setSectionIndex(sectionIndex++);
+                        chunk.setPageNumber(pageEstimate);
+                        chunk.setChunkIndex(globalChunkIndex++);
+                        chunks.add(chunk);
+                    }
+                }
+                // 1-sentence overlap: step back one sentence for the next window
+                chunkStart = boundary.previous();
+                boundary.next(); // restore iterator position
+                sentenceCount = 0;
+                // Rough page estimate: ~1500 chars (~250 words) per page
+                pageEstimate = (int)(chunkStart / 1500) + 1;
             }
-
-            if (end == text.length()) break;
-            start += step;
+        }
+        
+        // Handle remaining sentences
+        if (sentenceCount > 0 && chunkStart < text.length()) {
+            String chunkText = text.substring(chunkStart).trim();
+            if (!chunkText.isBlank()) {
+                String hash = sha256(chunkText);
+                if (!chunkRepository.existsByContentHash(hash)) {
+                    ChunkEntity chunk = new ChunkEntity();
+                    chunk.setDocument(document);
+                    chunk.setUserId(document.getUser().getId());
+                    chunk.setCategory(document.getCategory());
+                    chunk.setContent(chunkText);
+                    chunk.setContentHash(hash);
+                    chunk.setSectionIndex(sectionIndex);
+                    chunk.setPageNumber((int)(chunkStart / 1500) + 1);
+                    chunk.setChunkIndex(globalChunkIndex);
+                    chunks.add(chunk);
+                }
+            }
         }
 
         return chunks;
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
     }
 
     /** Looks up a user by username or throws an exception */

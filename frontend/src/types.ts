@@ -46,6 +46,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
+  metrics?: any;
 }
 
 /** Display labels and descriptions for each mode */
