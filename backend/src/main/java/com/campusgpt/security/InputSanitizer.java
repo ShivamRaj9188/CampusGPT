@@ -34,7 +34,7 @@ public final class InputSanitizer {
      * Allowed pattern for usernames: letters, digits, underscores, hyphens.
      * Rejects anything else (emoji, spaces, SQL/script characters).
      */
-    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]+$");
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9 ._-]+$");
 
     // Private constructor — utility class, not instantiable
     private InputSanitizer() {}
@@ -63,10 +63,10 @@ public final class InputSanitizer {
      */
     public static String sanitizeUsername(String username) {
         if (username == null) return null;
-        String sanitized = username.trim().toLowerCase();
+        String sanitized = username.trim();
         sanitized = DANGEROUS_CHARS.matcher(sanitized).replaceAll("");
-        // Strip anything not in the allowed set
-        sanitized = sanitized.replaceAll("[^a-zA-Z0-9_-]", "");
+        // Strip anything not in the allowed set (now includes space and dot)
+        sanitized = sanitized.replaceAll("[^a-zA-Z0-9 ._-]", "");
         return sanitized.length() > MAX_USERNAME_LENGTH
                 ? sanitized.substring(0, MAX_USERNAME_LENGTH)
                 : sanitized;

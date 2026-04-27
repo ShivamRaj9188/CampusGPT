@@ -20,8 +20,8 @@ public class SignupRequest {
     @NotBlank(message = "Username is required")
     @Size(min = 3, max = 30, message = "Username must be 3–30 characters")
     @Pattern(
-        regexp = "^[a-zA-Z0-9_-]+$",
-        message = "Username may only contain letters, digits, underscores, and hyphens"
+        regexp = "^[a-zA-Z0-9 ._-]+$",
+        message = "Username may only contain letters, digits, spaces, dots, underscores, and hyphens"
     )
     private String username;
 

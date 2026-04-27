@@ -35,7 +35,14 @@ export default function SettingsPage() {
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err: any) {
-      setProfileError(err.response?.data?.error || 'Failed to update profile');
+      const data = err.response?.data;
+      if (data?.details) {
+        // Flatten validation details map into a single string
+        const msgs = Object.values(data.details).join(' · ');
+        setProfileError(msgs);
+      } else {
+        setProfileError(data?.error || 'Failed to update profile');
+      }
     } finally {
       setProfileLoading(false);
     }
