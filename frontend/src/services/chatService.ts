@@ -31,6 +31,7 @@ export const chatService = {
     question: string,
     mode: ChatMode,
     history: { role: string; content: string }[],
+    sessionId: string,
     onToken: (token: string) => void,
     onMetrics: (metrics: any) => void,
     onDone: () => void,
@@ -48,7 +49,7 @@ export const chatService = {
             'Authorization': `Bearer ${token}`,
             'Accept': 'text/event-stream',
           },
-          body: JSON.stringify({ question, mode, history }),
+          body: JSON.stringify({ question, mode, history, sessionId }),
           signal: controller.signal,
         });
 
@@ -120,7 +121,7 @@ export const chatService = {
   /**
    * Fetches persistent chat history for the user.
    */
-  getHistory: async (): Promise<{ role: string; content: string; createdAt: string }[]> => {
+  getHistory: async (): Promise<{ role: string; content: string; createdAt: string; sessionId: string }[]> => {
     const token = localStorage.getItem('campusgpt_token');
     const response = await fetch('/api/chat/history', {
       headers: {
@@ -143,5 +144,19 @@ export const chatService = {
       },
     });
     if (!response.ok) throw new Error('Failed to clear history');
+  },
+
+  /**
+   * Deletes a specific chat session for the user.
+   */
+  deleteSession: async (sessionId: string): Promise<void> => {
+    const token = localStorage.getItem('campusgpt_token');
+    const response = await fetch(`/api/chat/history/${sessionId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('Failed to delete session');
   },
 };

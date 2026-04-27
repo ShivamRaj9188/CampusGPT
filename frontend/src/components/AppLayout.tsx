@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, MessageSquare, Upload, FileText,
   Zap, Settings, LogOut, GraduationCap, ChevronRight,
-  User, Flame, TrendingUp, Library, BookOpen, Plus, Clock
+  User, Flame, TrendingUp, Library, BookOpen, Plus, Clock, BarChart2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDocuments } from '../hooks/useDocuments';
 import { chatService } from '../services/chatService';
+import { SessionGuard } from './SessionGuard';
 
 const NAV_ITEMS = [
   { path: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { path: '/upload',     label: 'Upload Center',icon: Upload },
   { path: '/documents',  label: 'Documents',    icon: FileText },
   { path: '/modes',      label: 'Smart Modes',  icon: Zap },
+  { path: '/analytics',  label: 'Analytics',    icon: BarChart2 },
 ];
 
 /** Shared app shell: sidebar + main content + right utility panel */
@@ -46,6 +48,9 @@ export function AppLayout() {
     <div className="h-screen flex bg-bg-base overflow-hidden relative">
       {/* Ambient background particles */}
       <div className="particle-bg" />
+
+      {/* JWT session expiry guard */}
+      <SessionGuard />
 
       {/* ── Sidebar ──────────────────────────────────────────────────── */}
       <aside className="hidden md:flex w-72 flex-shrink-0 flex-col z-10"

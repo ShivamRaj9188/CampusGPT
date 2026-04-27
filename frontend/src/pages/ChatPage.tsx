@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { 
   Send, StopCircle, Bot, User, Sparkles, Trash2,
-  AlertTriangle, Lightbulb, FileText, Zap, Mic, Rocket, Target 
+  AlertTriangle, Lightbulb, FileText, Zap, Mic, Rocket, Target,
+  Plus, ChevronDown, Copy, Check
 } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 import { chatService } from '../services/chatService';
@@ -59,6 +60,33 @@ const ModeIcons: Record<string, React.ElementType> = {
   Target
 };
 
+const CodeBlock: React.FC<{ children: string }> = ({ children }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(children);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group my-4 rounded-xl overflow-hidden border border-white/5 bg-black/30">
+      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+        <span className="text-[10px] font-bold text-[#5a5a5a] uppercase tracking-widest">Code Block</span>
+        <button 
+          onClick={handleCopy}
+          className="p-1 rounded-md transition-all hover:bg-white/10"
+        >
+          {copied ? <Check className="w-3 h-3 text-[#00ff9d]" /> : <Copy className="w-3 h-3 text-[#5a5a5a]" />}
+        </button>
+      </div>
+      <pre className="p-4 overflow-x-auto">
+        <code className="text-xs text-[#00ff9d] font-mono leading-relaxed">{children}</code>
+      </pre>
+    </div>
+  );
+};
+
 let msgId = 0;
 const uid = () => `m${++msgId}`;
 
@@ -82,7 +110,9 @@ const MODE_COLORS: Record<ChatMode, string> = {
 export default function ChatPage() {
   const { refreshUser } = useAuth();
 
-  const [messages, setMessages]       = useState<Message[]>([]);
+  const [sessions, setSessions]       = useState<Record<string, Message[]>>({});
+  const [activeSessionId, setActiveSessionId] = useState<string>(uid());
+  const messages = sessions[activeSessionId] || [];
   const [input, setInput]             = useState('');
   const [mode, setMode]               = useState<ChatMode>('EXPLAIN_CONCEPT');
   const [isStreaming, setIsStreaming]  = useState(false);
@@ -97,14 +127,21 @@ export default function ChatPage() {
       try {
         const history = await chatService.getHistory();
         if (history && history.length > 0) {
-          // Reverse because backend returns Descending (newest first)
-          const formatted = history.reverse().map(h => ({
-            id: uid(),
-            role: h.role as 'user' | 'assistant',
-            content: h.content,
-            timestamp: new Date(h.createdAt)
-          }));
-          setMessages(formatted);
+          const grouped: Record<string, Message[]> = {};
+          // History from backend is Descending (newest first). Reverse it for chron. order
+          history.reverse().forEach(h => {
+            const sid = h.sessionId || 'default';
+            if (!grouped[sid]) grouped[sid] = [];
+            grouped[sid].push({
+              id: uid(),
+              role: h.role as 'user' | 'assistant',
+              content: h.content,
+              timestamp: new Date(h.createdAt)
+            });
+          });
+          setSessions(grouped);
+          // Set active session to the most recently active one (which is the last one processed)
+          setActiveSessionId(history[history.length - 1].sessionId || 'default');
         }
       } catch (err) {
         console.error('Failed to load history:', err);
@@ -128,7 +165,14 @@ export default function ChatPage() {
 
     const userMsg: Message  = { id: uid(), role: 'user', content: q, timestamp: new Date() };
     const aiMsg: Message    = { id: uid(), role: 'assistant', content: '', timestamp: new Date(), isStreaming: true };
-    setMessages(prev => [...prev, userMsg, aiMsg]);
+    const updateSession = (updater: (prev: Message[]) => Message[]) => {
+      setSessions(prev => ({
+        ...prev,
+        [activeSessionId]: updater(prev[activeSessionId] || [])
+      }));
+    };
+
+    updateSession(prev => [...prev, userMsg, aiMsg]);
     setIsStreaming(true);
     const aiId = aiMsg.id;
 
@@ -136,30 +180,62 @@ export default function ChatPage() {
 
     abortRef.current?.abort();
     abortRef.current = chatService.stream(
-      q, mode, historyPayload,
-      (token) => setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: m.content + token } : m)),
-      (metrics) => setMessages(prev => prev.map(m => m.id === aiId ? { ...m, metrics } : m)),
+      q, mode, historyPayload, activeSessionId,
+      (token) => updateSession(prev => prev.map(m => m.id === aiId ? { ...m, content: m.content + token } : m)),
+      (metrics) => updateSession(prev => prev.map(m => m.id === aiId ? { ...m, metrics } : m)),
       ()      => {
-        setMessages(prev => prev.map(m => m.id === aiId ? { ...m, isStreaming: false } : m));
+        updateSession(prev => prev.map(m => m.id === aiId ? { ...m, isStreaming: false } : m));
         setIsStreaming(false);
         void refreshUser();
       },
       (err)   => { 
-        setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: `Error: ${err}`, isStreaming: false } : m)); 
+        updateSession(prev => prev.map(m => m.id === aiId ? { ...m, content: `Error: ${err}`, isStreaming: false } : m)); 
         setIsStreaming(false); 
       }
     );
-  }, [input, isStreaming, mode]);
+  }, [input, isStreaming, mode, messages, activeSessionId]);
 
-  const stop = () => { abortRef.current?.abort(); setIsStreaming(false); setMessages(prev => prev.map(m => m.isStreaming ? { ...m, isStreaming: false } : m)); };
+  const stop = () => { 
+    abortRef.current?.abort(); 
+    setIsStreaming(false); 
+    setSessions(prev => ({
+      ...prev,
+      [activeSessionId]: (prev[activeSessionId] || []).map(m => m.isStreaming ? { ...m, isStreaming: false } : m)
+    })); 
+  };
 
   const clearHistory = async () => {
-    if (!window.confirm('Are you sure you want to clear your chat history?')) return;
+    if (!window.confirm('Are you sure you want to clear ALL chat history?')) return;
     try {
       await chatService.clearHistory();
-      setMessages([]);
+      setSessions({});
+      setActiveSessionId(uid());
     } catch (err) {
       console.error('Failed to clear history:', err);
+    }
+  };
+
+  const startNewChat = () => {
+    setActiveSessionId(uid());
+  };
+
+  const deleteCurrentSession = async () => {
+    if (!sessions[activeSessionId]) {
+      // If it's a "New Chat" with no messages, just reset it
+      setActiveSessionId(uid());
+      return;
+    }
+    if (!window.confirm('Delete this specific conversation?')) return;
+    try {
+      await chatService.deleteSession(activeSessionId);
+      setSessions(prev => {
+        const next = { ...prev };
+        delete next[activeSessionId];
+        return next;
+      });
+      setActiveSessionId(uid());
+    } catch (err) {
+      console.error('Failed to delete session:', err);
     }
   };
 
@@ -167,50 +243,112 @@ export default function ChatPage() {
     <div className="h-full flex flex-col">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-6 py-4 flex items-center justify-between"
-           style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div className="flex items-center gap-3">
-          <div className="flex items-end gap-0.5 h-5">
-            {[1,2,3,4,5].map((_, i) => (
-              <div key={i} className={isStreaming ? 'wave-bar' : 'wave-bar'} style={{
-                height: ['10px','16px','8px','14px','6px'][i],
-                opacity: isStreaming ? 1 : 0.3,
-                animationPlayState: isStreaming ? 'running' : 'paused',
-                animationDelay: `${i*0.1}s`
-              }} />
-            ))}
+      <div className="flex-shrink-0 px-6 py-3 flex flex-col gap-3"
+           style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)' }}>
+        
+        {/* Top Row: Title and Session Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-end gap-0.5 h-5">
+              {[1,2,3,4,5].map((_, i) => (
+                <div key={i} className="wave-bar" style={{
+                  height: ['10px','16px','8px','14px','6px'][i],
+                  opacity: isStreaming ? 1 : 0.3,
+                  animationPlayState: isStreaming ? 'running' : 'paused',
+                  animationDelay: `${i*0.1}s`
+                }} />
+              ))}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white tracking-tight">CampusGPT AI</p>
+              <p className="text-[10px] font-medium" style={{ color: '#505050' }}>
+                {documents.length} Source{documents.length !== 1 ? 's' : ''} Linked
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white">CampusGPT Chat</p>
-            <p className="text-xs" style={{ color: '#3a3a3a' }}>
-              {documents.length} doc{documents.length !== 1 ? 's' : ''} in context · {CHAT_MODES[mode].label} mode
-            </p>
+
+          <div className="flex items-center gap-2">
+            {Object.keys(sessions).length > 0 && (
+              <div className="flex items-center gap-1">
+                <div className="relative group">
+                  <select
+                    value={activeSessionId}
+                    onChange={(e) => setActiveSessionId(e.target.value)}
+                    className="pl-3 pr-8 py-1.5 rounded-lg text-[11px] font-medium outline-none cursor-pointer appearance-none transition-all"
+                    style={{ 
+                      background: 'rgba(255,255,255,0.03)', 
+                      border: '1px solid rgba(255,255,255,0.08)', 
+                      color: '#a0a0a0',
+                      minWidth: '140px'
+                    }}
+                  >
+                    {Object.entries(sessions).map(([sid, msgs], i) => (
+                      <option key={sid} value={sid} style={{ background: '#111' }}>
+                        {msgs[0] ? msgs[0].content.slice(0, 24) + '...' : `Chat ${i + 1}`}
+                      </option>
+                    ))}
+                    {!sessions[activeSessionId] && <option value={activeSessionId} style={{ background: '#111' }}>Current New Chat</option>}
+                  </select>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                    <ChevronDown className="w-3 h-3" />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={deleteCurrentSession}
+                  className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10 text-[#404040] hover:text-red-400"
+                  title="Delete current session"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            <button 
+              onClick={startNewChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:brightness-110 active:scale-95"
+              style={{ background: '#00ff9d', color: '#000' }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Chat
+            </button>
+
+            <button 
+              onClick={clearHistory}
+              className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10 text-[#404040] hover:text-red-400"
+              title="Wipe All History"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
+        {/* Bottom Row: Mode Selector */}
         <div className="flex items-center gap-2">
-          {/* Mode selector */}
-          <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="text-[10px] font-bold text-[#404040] mr-2">Smart Modes:</div>
+          <div className="flex flex-wrap gap-1.5">
             {(Object.entries(CHAT_MODES) as [ChatMode, typeof CHAT_MODES[ChatMode]][]).map(([key, val]) => {
               const Icon = ModeIcons[val.iconName] || Sparkles;
+              const isActive = mode === key;
               return (
-                <button key={key} onClick={() => setMode(key)}
-                        className={`mode-pill text-xs py-1.5 px-2.5 flex items-center gap-1.5 ${mode === key ? 'active' : ''}`}
-                        style={mode === key ? { '--tw-border-opacity': 1, color: MODE_COLORS[key] } as React.CSSProperties : {}}>
-                  <Icon className="w-3.5 h-3.5" />
+                <button 
+                  key={key} 
+                  onClick={() => setMode(key)}
+                  className={`flex items-center gap-2 py-1.5 px-3 rounded-lg text-[11px] font-medium transition-all duration-300 border ${
+                    isActive ? 'border-transparent' : 'border-white/5 hover:border-white/10'
+                  }`}
+                  style={{
+                    background: isActive ? `${MODE_COLORS[key]}15` : 'rgba(255,255,255,0.02)',
+                    color: isActive ? MODE_COLORS[key] : '#707070',
+                    borderColor: isActive ? `${MODE_COLORS[key]}40` : ''
+                  }}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'animate-pulse' : ''}`} />
                   {val.label}
                 </button>
               );
             })}
           </div>
-          
-          <button 
-            onClick={clearHistory}
-            className="p-2 rounded-xl transition-colors hover:bg-red-500/10 text-[#3a3a3a] hover:text-red-400"
-            title="Clear Chat History"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -298,7 +436,16 @@ export default function ChatPage() {
                       </div>
                     ) : (
                       <div className="ai-prose">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          components={{
+                            code({ inline, children }) {
+                              if (inline) return <code className="bg-white/5 px-1.5 py-0.5 rounded text-[#00ff9d] text-[13px]">{children}</code>;
+                              return <CodeBlock>{String(children).replace(/\n$/, '')}</CodeBlock>;
+                            }
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                         {msg.isStreaming && (
                           <span className="inline-block w-0.5 h-4 ml-0.5 rounded-full animate-pulse"
                                 style={{ background: '#00ff9d', verticalAlign: '-0.15em' }} />

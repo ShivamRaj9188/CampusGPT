@@ -9,6 +9,7 @@ import UploadPage from './pages/UploadPage';
 import DocumentsPage from './pages/DocumentsPage';
 import SmartModesPage from './pages/SmartModesPage';
 import SettingsPage from './pages/SettingsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="documents"   element={<DocumentsPage />} />
             <Route path="modes"       element={<SmartModesPage />} />
             <Route path="settings"    element={<SettingsPage />} />
+            <Route path="analytics"   element={<AnalyticsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
