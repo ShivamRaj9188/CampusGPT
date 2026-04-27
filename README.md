@@ -1,113 +1,97 @@
-# CampusGPT
+# CampusGPT: Enterprise-Grade Academic Operating System
 
-AI-powered academic operating system - RAG + local SLM + pgvector
+CampusGPT is a localized, high-performance academic assistance platform built on a Retrieval-Augmented Generation (RAG) architecture. It integrates Small Language Models (SLMs) with advanced vector search and unsupervised machine learning to provide students with a secure, private, and highly efficient study environment.
 
 ## Technical Architecture
 
-| Layer | Technology |
+| Layer | Implementation |
 |-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Framer Motion, Lucide |
-| Backend | Spring Boot 3.2, Java 21, Spring Security (JWT) |
-| Database | PostgreSQL 14 + pgvector extension |
-| AI Inference | Ollama (llama3.2:3b + nomic-embed-text) |
-| Pipeline | RAG workflow (PDF ingestion, SLM-optimized chunking, vector embeddings, hybrid search) |
+| Frontend | React 18, TypeScript, Vite, Framer Motion, Tailwind CSS |
+| Backend | Spring Boot 3.2, Java 25, Spring Security (JWT), Hibernate |
+| Database | PostgreSQL 16 + pgvector extension |
+| AI Inference | Ollama (Llama 3.2:3B + Nomic-Embed-Text) |
+| Pipeline | RAG workflow with Hybrid Search and Unsupervised Analytics |
 
 ## Core System Flow
 
-CampusGPT utilizes a modular, three-tier architecture designed for local execution and data privacy. The following diagram illustrates the Retrieval-Augmented Generation (RAG) lifecycle.
+The system employs a multi-stage pipeline designed for low-latency retrieval and high-fidelity generation.
 
 ```mermaid
 graph TD
-    subgraph Ingestion
-    A[PDF Document] --> B[Text Extraction]
-    B --> C[SLM-Optimized NLP Chunking]
-    C --> D[Vector Embedding]
+    subgraph Data Ingestion
+    A[PDF Source] --> B[NLP-Based Text Extraction]
+    B --> C[Semantic Chunking]
+    C --> D[Nomic Vector Embedding]
     D --> E[(pgvector Storage)]
     end
 
-    subgraph Retrieval
-    F[User Question] --> G[Query Embedding]
-    G --> H[Hybrid Search - Vector + Keyword]
-    H --> E
-    E --> I[Context Fusion]
+    subgraph Analytical Intelligence
+    E --> F[Unsupervised Learning Engine]
+    F --> G[K-Means Clustering]
+    F --> H[PCA Dimensionality Reduction]
+    F --> I[LOF Anomaly Detection]
     end
 
-    subgraph Generation
-    I --> J[Prompt Augmentation]
-    J --> K[Ollama SLM]
-    K --> L[SSE Streaming Output]
+    subgraph Retrieval & Generation
+    J[Query] --> K[Hybrid Search]
+    K --> E
+    E --> L[Context Fusion]
+    L --> M[Ollama SLM]
+    M --> N[SSE Streaming Output]
     end
 ```
 
-## Production-Grade Features
+## Principal Capabilities
 
-### 1. SLM-Optimized NLP Pipeline
-- **Adaptive Chunking**: Uses NLP sentence boundaries to maintain semantic integrity, tailored for Small Language Models (SLMs) with smaller context windows.
-- **Keyword-Aware Ingestion**: Automatically generates full-text search vectors (tsvector) for high-precision keyword retrieval alongside semantic search.
+### 1. Unsupervised Learning & Embedding Analytics
+The platform features a specialized analytics engine that provides transparency into the AI's internal representation of uploaded documents:
+- **K-Means Clustering**: Automatically categorizes document chunks into distinct conceptual groups, revealing the document's thematic structure.
+- **PCA Visualization**: Reduces high-dimensional embeddings (768-D) to a 2D map, allowing users to visualize semantic relationships between topics.
+- **Anomaly Detection**: Utilizes Local Outlier Factor (LOF) to identify and flag irrelevant or non-contextual data segments (e.g., indexes, advertisements).
+- **Layman Reporting**: Translates complex mathematical metrics (Silhouette Score, Inertia) into human-readable insights regarding document quality and organization.
 
-### 2. High-Performance Hybrid Search
-- **Sub-20ms Retrieval**: Implemented a denormalized database schema with B-Tree and GIN indexing to achieve enterprise-grade search performance.
-- **RRF Fusion**: Combines semantic vector similarity (pgvector) with keyword-based ranking (tsvector) for highly relevant context retrieval.
-- **MMR Re-ranking**: Employs Maximal Marginal Relevance (MMR) to ensure context diversity and reduce redundancy in LLM prompts.
+### 2. High-Performance RAG Infrastructure
+- **Hybrid Search Engine**: Combines pgvector semantic similarity with full-text keyword search (tsvector) for precise retrieval.
+- **Sub-20ms Latency**: Optimized database schema and HNSW indexing ensure near-instantaneous context retrieval.
+- **VRAM Persistence**: Configured with a background 'keep-alive' strategy to prevent model offloading, ensuring zero-latency response generation.
+- **Expert Personas**: Includes specialized AI modes (Explain Concept, 10-Mark Answer, Viva Prep, Exam Strategy) with unique system instructions and output templates.
 
-### 3. Persistent Chat Management
-- **Conversation History**: Full multi-turn conversation persistence stored in PostgreSQL.
-- **Session Continuity**: Automatic loading of recent sessions into the sidebar for a seamless user experience.
-- **Data Privacy**: All chat logs and document chunks are scoped to the authenticated user and stored locally.
+### 3. Advanced User Experience Features
+- **Session Persistence**: Full multi-session management with individual chat thread tracking and selective deletion.
+- **Interactive Code Blocks**: Integrated code rendering with a functional clipboard synchronization system and visual confirmation.
+- **Dynamic Visual Feedback**: Implementation of animated "Thinking" states and real-time retrieval metrics (DB Latency, Confidence Score).
+- **Flexible Profiles**: Modernized authentication system supporting mixed-case, space-aware usernames and study streak automation.
 
-### 4. Realistic Confidence Scoring
-- **Calibrated Metrics**: Confidence scores (80-95%) are derived from a combination of Cosine Similarity and Reciprocal Rank Fusion (RRF) scores, providing an accurate signal of AI answer reliability.
-
-## Quick Start
+## System Configuration
 
 ### Prerequisites
-- Java 21 (required for modern Spring Boot features)
-- PostgreSQL 14 or higher with the pgvector extension enabled
-- Ollama running locally with `llama3.2:3b` and `nomic-embed-text` models
+- Java 21 or higher (Java 25 recommended)
+- PostgreSQL 14+ with pgvector extension enabled
+- Local Ollama instance with Llama 3.2 and Nomic-Embed-Text models
 
-### 1. Database Initialization
+### Database Initialization
 ```sql
 CREATE DATABASE campusgpt;
 \c campusgpt
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-### 2. Backend Configuration
+### Backend Deployment
 ```bash
 cd backend
-
-# Configure environment
-cp .env.example .env
-# Update .env with database credentials and JWT secret
-
-# Build and run
-./apache-maven-3.9.6/bin/mvn spring-boot:run
+# Configure .env with database credentials and JWT_SECRET
+./mvnw spring-boot:run
 ```
 
-### 3. Frontend Configuration
+### Frontend Deployment
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## API Reference
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/signup` | No | Register new user |
-| POST | `/api/auth/login` | No | Authenticate and retrieve JWT |
-| POST | `/api/chat` | Yes | SSE streaming RAG chat |
-| GET | `/api/chat/history` | Yes | Retrieve session history |
-| DELETE | `/api/chat/history` | Yes | Clear user conversation history |
-| POST | `/api/documents` | Yes | Upload and index PDF document |
-| GET | `/api/documents` | Yes | List indexed documents |
-
-## System Features
-
-- **Layout-Aware Parsing**: Positional document text parsing maintains visual structure across columns and tables.
-- **Multi-Turn Chat Memory**: Persistent student-AI interaction context window (10+ messages).
-- **Smart Modes**: Specialized modes including Explain Concept, 10-Mark Answer, Short Notes, Viva, Revision Blast, and Exam Strategy.
-- **Study Streak Automation**: Automated daily task scheduling monitors student engagement and study streaks.
-- **Mobile-Responsive Interface**: Glassmorphism UI with adaptive breakpoints for desktop and mobile devices.
-- **Security Protocols**: BCrypt password hashing, JWT-based authentication, and strict input sanitization.
+## Security and Compliance
+- **OWASP A03/A07 Mitigation**: Strict input sanitization and unified error messaging for authentication security.
+- **BCrypt Hashing**: Industry-standard password encryption.
+- **JWT Authentication**: Stateless, token-based session management.
+- **Local Sovereignty**: All data, including embeddings and chat history, remains on the user's local hardware.
