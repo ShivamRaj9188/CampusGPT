@@ -38,4 +38,9 @@ public class ChatRequest {
      * Contains recent previous messages to maintain context across API calls.
      */
     private java.util.List<MessageDto> history;
+
+    /**
+     * Optional session ID to group chats.
+     */
+    private String sessionId = "default";
 }

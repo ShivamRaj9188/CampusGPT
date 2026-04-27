@@ -81,4 +81,17 @@ public class ChatController {
         chatService.clearHistory(principal.getName());
         return ResponseEntity.ok(Map.of("message", "History cleared"));
     }
+
+    /**
+     * DELETE /api/chat/history/{sessionId}
+     * Clears a specific chat session for the user.
+     */
+    @DeleteMapping("/chat/history/{sessionId}")
+    public ResponseEntity<Map<String, String>> deleteSession(
+            @PathVariable String sessionId,
+            Principal principal
+    ) {
+        chatService.deleteSession(principal.getName(), sessionId);
+        return ResponseEntity.ok(Map.of("message", "Session deleted"));
+    }
 }

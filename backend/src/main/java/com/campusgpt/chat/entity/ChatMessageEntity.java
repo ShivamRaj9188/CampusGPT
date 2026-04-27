@@ -31,6 +31,10 @@ public class ChatMessageEntity {
     @Column(nullable = false, length = 20)
     private String role; // "user" or "assistant"
 
+    @Column(name = "session_id", nullable = false, columnDefinition = "varchar(255) default 'default'")
+    @Builder.Default
+    private String sessionId = "default";
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
