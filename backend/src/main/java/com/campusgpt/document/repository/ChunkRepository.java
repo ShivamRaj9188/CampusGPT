@@ -71,6 +71,10 @@ public interface ChunkRepository extends JpaRepository<ChunkEntity, Long> {
             @Param("limit") int limit
     );
 
+    /** Fetch embedded chunks for a specific user (used by analytics) */
+    @Query("SELECT c FROM ChunkEntity c WHERE c.userId = :userId AND c.embedding IS NOT NULL")
+    List<ChunkEntity> findEmbeddedByUserId(@Param("userId") Long userId, org.springframework.data.domain.Pageable pageable);
+
     /** Check if chunk content already exists to avoid redundant embeddings */
     boolean existsByContentHash(String contentHash);
 

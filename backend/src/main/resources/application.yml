@@ -50,7 +50,7 @@ ollama:
   model: ${OLLAMA_MODEL:llama3.2:3b}
   embedding-model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
   embedding-dimension: 768
-  keep-alive: ${OLLAMA_KEEP_ALIVE:10m}
+  keep-alive: ${OLLAMA_KEEP_ALIVE:-1}
   temperature: ${OLLAMA_TEMPERATURE:0.2}
   num-predict:
     default: ${OLLAMA_NUM_PREDICT_DEFAULT:220}

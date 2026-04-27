@@ -69,9 +69,10 @@ public class OllamaEmbeddingService {
         }
 
         // Build request payload for Ollama embeddings API
-        Map<String, String> request = Map.of(
+        Map<String, Object> request = Map.of(
                 "model", embeddingModel,
-                "prompt", text   // Ollama uses "prompt" (not "input") for embeddings
+                "prompt", text,   // Ollama uses "prompt" (not "input") for embeddings
+                "keep_alive", -1
         );
 
         try {

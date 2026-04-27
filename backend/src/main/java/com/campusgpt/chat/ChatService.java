@@ -21,6 +21,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -58,6 +59,22 @@ public class ChatService {
 
     @Value("${ollama.temperature:0.2}")
     private double ollamaTemperature;
+
+    // Per-mode token budgets (configured in application.yml)
+    @Value("${ollama.num-predict.default:220}")
+    private int numPredictDefault;
+    @Value("${ollama.num-predict.explain-concept:260}")
+    private int numPredictExplain;
+    @Value("${ollama.num-predict.ten-mark:360}")
+    private int numPredictTenMark;
+    @Value("${ollama.num-predict.short-notes:200}")
+    private int numPredictShortNotes;
+    @Value("${ollama.num-predict.viva:240}")
+    private int numPredictViva;
+    @Value("${ollama.num-predict.revision-blast:180}")
+    private int numPredictRevisionBlast;
+    @Value("${ollama.num-predict.exam-strategy:220}")
+    private int numPredictExamStrategy;
 
     @Value("${rag.top-k:3}")
     private int topK;
@@ -143,23 +160,23 @@ public class ChatService {
                 } catch (Exception ignored) { }
 
                 // ── Step 4: Persist message history & confidence ───────────────
-                saveMessage(user, question, "user");
+                saveMessage(user, question, "user", request.getSessionId());
                 updateAiConfidence(user, finalContext);
 
                 // ── Step 4: Build the full prompt (mode-specific) ──────────────
                 String systemInstruction = buildSystemInstruction(context, request.getMode(), request.getHistory());
 
                 // ── Step 5: Stream response from Ollama llama3 ─────────────
-                Map<String, Object> ollamaRequest = Map.of(
-                        "model", ollamaModel,
-                        "system", systemInstruction,
-                        "prompt", question,
-                        "stream", true,
-                        "keep_alive", ollamaKeepAlive,
-                        "options", Map.of(
-                                "temperature", ollamaTemperature
-                        )
-                );
+                Map<String, Object> ollamaRequest = new HashMap<>();
+                ollamaRequest.put("model", ollamaModel);
+                ollamaRequest.put("system", systemInstruction);
+                ollamaRequest.put("prompt", question);
+                ollamaRequest.put("stream", true);
+                ollamaRequest.put("keep_alive", parseKeepAlive(ollamaKeepAlive));
+                ollamaRequest.put("options", Map.of(
+                        "temperature", ollamaTemperature,
+                        "num_predict", -1
+                ));
 
                 StringBuilder assistantResponse = new StringBuilder();
                 
@@ -175,7 +192,7 @@ public class ChatService {
                                 },
                                 error -> handleStreamError(error, emitter),
                                 () -> {
-                                    saveMessage(user, assistantResponse.toString(), "assistant");
+                                    saveMessage(user, assistantResponse.toString(), "assistant", request.getSessionId());
                                     emitter.complete();
                                 }
                         );
@@ -250,39 +267,39 @@ public class ChatService {
     private String buildSystemInstruction(String context, ChatMode mode, List<com.campusgpt.chat.dto.MessageDto> history) {
         String systemPrompt = switch (mode) {
             case EXPLAIN_CONCEPT ->
-                "You are a knowledgeable and patient professor. " +
-                "Explain the concept clearly and thoroughly, breaking down complex ideas with analogies and examples. " +
-                "Base your explanation primarily on the context provided from the student's study materials. " +
-                "Stay concise unless the context clearly demands more detail.";
+                "You are an elite University Professor specializing in simplifying complex theory. " +
+                "Goal: Explain the concept from first principles using 'The Feynman Technique'. " +
+                "Structure: Start with a 1-sentence plain-English summary, followed by a deeper dive using 2-3 relatable analogies. " +
+                "Use bold text for technical terms and ensure the tone is encouraging yet academic.";
 
             case TEN_MARK ->
-                "You are an experienced exam coach. " +
-                "Provide a comprehensive, well-structured answer suitable for 10 marks in a university exam. " +
-                "Structure your answer with: (1) a brief introduction, (2) numbered key points with explanations, " +
-                "(3) relevant examples from the context, and (4) a concise conclusion. " +
-                "Do not add filler beyond what improves the final answer.";
+                "You are a Senior Exam Evaluator. " +
+                "Goal: Provide a high-scoring university exam answer worth exactly 10 marks. " +
+                "Template: (1) Definition & Intro (2) Bulleted key points with sub-headings (3) Real-world application/case study (4) A final 'Examiner's Note' on common mistakes. " +
+                "Focus on breadth and professional formatting.";
 
             case SHORT_NOTES ->
-                "You are a concise study assistant. " +
-                "Create well-organized short notes in bullet-point format. " +
-                "Highlight key terms, keep explanations brief but complete, " +
-                "and organize points under clear headings. " +
-                "Make them ideal for quick revision before an exam.";
+                "You are a High-Density Note-Taking Expert. " +
+                "Goal: Create extremeley skimmable, high-value revision notes. " +
+                "Style: Use nested bullet points, bold keywords, and a 'Quick Recall' section at the bottom listing only the 5 most important terms. " +
+                "Minimize fluff; maximize information density.";
 
             case VIVA ->
-                "You are a viva preparation coach. " +
-                "Generate likely oral-exam questions followed by crisp model answers. " +
-                "Focus on conceptual clarity, common follow-up questions, and concise language the student can speak naturally.";
+                "You are a strict but fair Viva Voce Examiner. " +
+                "Goal: Prepare the student for oral defense. " +
+                "Output: List 3-4 likely oral questions from the material, each followed by a punchy, 2-sentence 'Model Answer' that is easy to speak aloud. " +
+                "Include a 'Pro Tip' on how to handle cross-questioning for this specific topic.";
 
             case REVISION_BLAST ->
-                "You are a high-speed revision assistant. " +
-                "Compress the topic into the most important ideas, formulas, and keywords. " +
-                "Prioritize recall value, signal what matters most, and keep the output skimmable.";
+                "You are a 'Flash-Revision' AI optimized for the 10 minutes before an exam. " +
+                "Goal: Provide an ultra-compact summary. " +
+                "Style: Use a table for comparisons if applicable, otherwise use a checklist of 'Must-Know' facts and any formulas/constants found in the context.";
 
             case EXAM_STRATEGY ->
-                "You are an exam strategy mentor. " +
-                "Analyze the topic coverage in the provided material and suggest what to study first, " +
-                "what to revise next, and how to allocate time for efficient scoring.";
+                "You are a Strategic Academic Mentor. " +
+                "Goal: Prioritize content based on difficulty and weightage. " +
+                "Analysis: Identify the 'High-Yield' areas from the provided material. " +
+                "Suggest a 2-hour study plan specifically for this content, ranking topics from 'Study First' to 'If Time Permits'.";
         };
 
         StringBuilder historyBlock = new StringBuilder();
@@ -304,11 +321,13 @@ public class ChatService {
                 + "\n\nContext from uploaded study materials:\n---\n"
                 + context
                 + "---\n\n"
-                + "CRITICAL FORMATTING RULES (YOU MUST FOLLOW THESE):\n"
-                + "1. STRICTLY USE MARKDOWN: Never write a solid block of text. Break your answer into highly readable sections.\n"
-                + "2. USE PARAGRAPHS & LISTS: Use bullet points freely to explain concepts. Every single paragraph or bullet list MUST be separated by a DOUBLE blank line (\\n\\n).\n"
-                + "3. Add bold headings (##) to separate different ideas.\n"
-                + "4. Answer ONLY using the provided context. Cite sources cleanly at the end of sentences (e.g., '... [Doc 3].').";
+                + "CRITICAL FORMATTING RULES (STRICT ADHERENCE REQUIRED):\n"
+                + "1. NO WALLS OF TEXT: Break every idea into distinct paragraphs or bullet points.\n"
+                + "2. SPACING: Use double newlines (\\n\\n) between every single paragraph, heading, and list.\n"
+                + "3. HEADINGS: Use ## for main sections and ### for sub-sections. Bold key technical terms (**term**).\n"
+                + "4. TABLES: If comparing two or more things, you MUST use a Markdown table.\n"
+                + "5. RAG SOURCE CITATION: Use the provided context ONLY. At the end of relevant sentences, cite the source like this: [Source: Document Name].\n"
+                + "6. TONE: Maintain a professional, academic, yet encouraging tone as per your assigned persona.";
     }
 
     private String buildContext(List<ChunkSearchResult> chunks) {
@@ -417,7 +436,8 @@ public class ChatService {
 
     public List<com.campusgpt.chat.entity.ChatMessageEntity> getHistory(String username) {
         UserEntity user = getUser(username);
-        return chatMessageRepository.findTop10ByUserOrderByCreatedAtDesc(user);
+        // We now fetch top 50 so the frontend can group them into sessions
+        return chatMessageRepository.findTop50ByUserOrderByCreatedAtDesc(user);
     }
 
     @Transactional
@@ -426,6 +446,12 @@ public class ChatService {
         // Better performance than deleteAll(List) for large histories
         List<com.campusgpt.chat.entity.ChatMessageEntity> history = chatMessageRepository.findByUserOrderByCreatedAtDesc(user);
         chatMessageRepository.deleteAllInBatch(history);
+    }
+
+    @Transactional
+    public void deleteSession(String username, String sessionId) {
+        UserEntity user = getUser(username);
+        chatMessageRepository.deleteByUserAndSessionId(user, sessionId);
     }
 
     private UserEntity getUser(String username) {
@@ -437,13 +463,23 @@ public class ChatService {
      * Persists a real confidence signal derived from hybrid retrieval metrics.
      * Uses a combination of RRF (rank agreement) and Cosine Similarity (semantic match).
      */
-    private void saveMessage(UserEntity user, String content, String role) {
+    private void saveMessage(UserEntity user, String content, String role, String sessionId) {
         com.campusgpt.chat.entity.ChatMessageEntity msg = com.campusgpt.chat.entity.ChatMessageEntity.builder()
                 .user(user)
                 .content(content)
                 .role(role)
+                .sessionId(sessionId != null ? sessionId : "default")
                 .build();
         chatMessageRepository.save(msg);
+    }
+
+    private Object parseKeepAlive(String keepAlive) {
+        if (keepAlive == null || keepAlive.isBlank()) return "10m";
+        try {
+            return Integer.parseInt(keepAlive);
+        } catch (NumberFormatException e) {
+            return keepAlive;
+        }
     }
 
     private void updateAiConfidence(UserEntity user, List<ChunkSearchResult> similarChunks) {
