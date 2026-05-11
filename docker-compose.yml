@@ -1,0 +1,129 @@
+# ============================================================
+# CampusGPT — Docker Compose
+# ============================================================
+# Services:
+#   postgres  — PostgreSQL 16 with pgvector extension
+#   ollama    — Local LLM server (llama3.2:3b + nomic-embed-text)
+#   backend   — Spring Boot REST API (port 8080)
+#   frontend  — React/Vite app served via Nginx (port 3000)
+#
+# HOW TO RUN:
+#   1. Make sure Docker Desktop is installed and running.
+#   2. Open a terminal in this folder (where this file is).
+#   3. Run: docker-compose up --build
+#   4. Wait for all services to start (first time may take a few minutes).
+#   5. Open browser: http://localhost:3000
+#
+# TO STOP:
+#   Press Ctrl+C  OR  run: docker-compose down
+# ============================================================
+
+version: "3.9"
+
+services:
+
+  # ─── PostgreSQL + pgvector ──────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: campusgpt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: campusgpt
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d campusgpt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Ollama (Local LLM) ─────────────────────────────────────
+  # NOTE: First startup will automatically pull the models.
+  # This requires internet access and may take 5-10 minutes.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: campusgpt-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Pull models on startup if not already present
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama serve &
+      sleep 5 &&
+      ollama pull llama3.2:3b &&
+      ollama pull nomic-embed-text &&
+      wait"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ─── Spring Boot Backend ────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campusgpt-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Database — point to the postgres container by service name
+      DB_URL: jdbc:postgresql://postgres:5432/campusgpt
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      # JWT
+      JWT_SECRET: RArCFsZpitey4fwBpBA6Y1/ZngWq8ft/MTs5O9IAnLV/Gk9f+9h1kuX+uLcbMxnOZMOVIcdnjQgKXq90zc1dEg==
+      JWT_EXPIRATION: 86400000
+      # Ollama — point to the ollama container by service name
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:3b
+      OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+      OLLAMA_KEEP_ALIVE: 10m
+      OLLAMA_TEMPERATURE: "0.2"
+      # Upload
+      MAX_UPLOAD_SIZE: 20MB
+      # Rate Limiting
+      RL_PUBLIC_CAPACITY: "10"
+      RL_PUBLIC_REFILL: "1"
+      RL_AUTH_CAPACITY: "60"
+      RL_AUTH_REFILL: "1"
+      # Logging
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── React/Vite Frontend (served via Nginx) ─────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campusgpt-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+# ─── Named Volumes (data persists across restarts) ───────────
+volumes:
+  postgres_data:
+  ollama_data:

@@ -1,5 +1,43 @@
 # CampusGPT: Enterprise-Grade Academic Operating System
 
+##  Quick Start (Docker — Recommended)
+
+> **No Java, Node.js, or PostgreSQL installation required!**
+> All you need is **Docker Desktop**.
+
+### Step 1 — Install Docker Desktop
+Download from: https://www.docker.com/products/docker-desktop  
+_(Free. Available for Windows, Mac, and Linux.)_
+
+### Step 2 — Run the Project
+Open a terminal in this folder and run:
+```bash
+docker-compose up --build
+```
+
+That's it! Docker will automatically:
+-  Set up PostgreSQL with the pgvector extension
+-  Download and start the Ollama AI models (llama3.2:3b + nomic-embed-text)
+-  Build and start the Spring Boot backend
+-  Build and serve the React frontend via Nginx
+
+>  **First run takes 5–10 minutes** — Ollama needs to download the AI models (~2GB). Subsequent runs are instant.
+
+### Step 3 — Open the App
+Once all containers are running, open your browser:
+```
+http://localhost:3000
+```
+
+### To Stop
+```bash
+# Press Ctrl+C  OR  run:
+docker-compose down
+```
+
+---
+
+
 CampusGPT is a localized, high-performance academic assistance platform built on a Retrieval-Augmented Generation (RAG) architecture. It integrates Small Language Models (SLMs) with advanced vector search and unsupervised machine learning to provide students with a secure, private, and highly efficient study environment.
 
 ## Technical Architecture

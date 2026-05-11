@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CampusGPT – Project Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1a1a2e; background: #fff; padding: 40px; }
+  h1 { font-size: 26px; font-weight: 700; color: #0f3460; border-bottom: 3px solid #0f3460; padding-bottom: 10px; margin-bottom: 6px; }
+  .subtitle { color: #555; font-size: 13px; margin-bottom: 30px; }
+  h2 { font-size: 17px; font-weight: 700; color: #16213e; margin: 28px 0 10px; border-left: 4px solid #0f3460; padding-left: 10px; }
+  h3 { font-size: 14px; font-weight: 600; color: #0f3460; margin: 16px 0 6px; }
+  p { line-height: 1.7; margin-bottom: 10px; }
+  ul { margin: 8px 0 12px 20px; line-height: 1.8; }
+  li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 12px; }
+  th { background: #0f3460; color: #fff; padding: 8px 12px; text-align: left; }
+  td { padding: 7px 12px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f7f9fc; }
+  code { background: #f0f4f8; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; font-family: monospace; color: #c0392b; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin: 2px; }
+  .blue { background: #dbeafe; color: #1e40af; }
+  .green { background: #dcfce7; color: #15803d; }
+  .purple { background: #ede9fe; color: #6d28d9; }
+  .orange { background: #ffedd5; color: #c2410c; }
+  .info-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .warn-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .step { display: flex; align-items: flex-start; gap: 12px; margin: 10px 0; }
+  .step-num { background: #0f3460; color: #fff; border-radius: 50%; min-width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 14px; border-radius: 6px; font-size: 12px; overflow: auto; margin: 10px 0; }
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+  .cover { text-align: center; padding: 60px 0 40px; }
+  .cover h1 { font-size: 32px; border: none; }
+  .cover .tagline { font-size: 15px; color: #555; margin: 10px 0 30px; }
+  .cover table { width: auto; margin: 0 auto; }
+  .cover table td, .cover table th { text-align: center; }
+  @media print { body { padding: 20px; } }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <h1>CampusGPT</h1>
+  <p class="tagline">AI-Powered Academic Operating System using Small Language Models &amp; RAG</p>
+  <table>
+    <tr><th>Field</th><th>Details</th></tr>
+    <tr><td>Project Title</td><td><strong>CampusGPT – Localized Academic AI Assistant</strong></td></tr>
+    <tr><td>Technology</td><td>Spring Boot · React · PostgreSQL · Ollama LLM</td></tr>
+    <tr><td>Domain</td><td>Unsupervised Machine Learning · NLP · RAG</td></tr>
+    <tr><td>Type</td><td>Full-Stack Web Application</td></tr>
+    <tr><td>Report Date</td><td>April 2026</td></tr>
+  </table>
+</div>
+
+<hr class="divider">
+
+<!-- SECTION 1 -->
+<h2>1. Project Overview</h2>
+<p>CampusGPT is a <strong>privacy-first, fully offline AI study assistant</strong> built for university students. It runs entirely on the user's local machine — no cloud API, no data leakage. Students upload their course PDFs, and the system answers questions, generates exam answers, creates revision notes, and provides viva preparation — all powered by a locally running Large Language Model (LLM).</p>
+<p>The core innovation is a production-grade <strong>Retrieval-Augmented Generation (RAG)</strong> pipeline combined with a full <strong>Unsupervised Learning analytics engine</strong> that visualizes how the AI "understands" a student's documents using K-Means clustering, PCA, and anomaly detection.</p>
+
+<h2>2. Technology Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+  <tr><td>Frontend</td><td>React 18, TypeScript, Vite, Tailwind CSS, Framer Motion</td><td>Interactive UI with real-time streaming</td></tr>
+  <tr><td>Backend</td><td>Spring Boot 3.2, Java 17, Spring Security, WebFlux</td><td>REST API, JWT auth, RAG pipeline</td></tr>
+  <tr><td>Database</td><td>PostgreSQL 16 + pgvector extension</td><td>Stores documents, embeddings, chat history</td></tr>
+  <tr><td>AI / LLM</td><td>Ollama · llama3.2:3b · nomic-embed-text</td><td>Local inference &amp; vector embeddings</td></tr>
+  <tr><td>DevOps</td><td>Docker, Docker Compose, Nginx</td><td>One-command deployment on any machine</td></tr>
+</table>
+
+<h2>3. System Architecture</h2>
+<h3>3.1 RAG Pipeline (ChatService.java)</h3>
+<p>The RAG pipeline is the heart of the system. When a student asks a question:</p>
+<ul>
+  <li><strong>Step 1 – Embed:</strong> The question is converted to a 768-dimensional vector using <code>nomic-embed-text</code> via Ollama.</li>
+  <li><strong>Step 2 – Hybrid Search:</strong> PostgreSQL runs a combined <strong>semantic search</strong> (pgvector cosine similarity) and <strong>keyword search</strong> (tsvector full-text) using Reciprocal Rank Fusion (RRF) to score results.</li>
+  <li><strong>Step 3 – MMR Re-ranking:</strong> Maximal Marginal Relevance filters results for diversity to avoid redundant context.</li>
+  <li><strong>Step 4 – Prompt Construction:</strong> A mode-specific system prompt is assembled with the retrieved chunks as context.</li>
+  <li><strong>Step 5 – SSE Streaming:</strong> The prompt is sent to <code>llama3.2:3b</code> and each generated token is streamed back to the browser in real-time using Server-Sent Events.</li>
+</ul>
+
+<h3>3.2 Unsupervised Learning Engine (EmbeddingAnalyticsService.java)</h3>
+<p>Implemented entirely in pure Java with zero external ML libraries — all algorithms written from scratch:</p>
+<table>
+  <tr><th>Algorithm</th><th>Implementation</th><th>Purpose</th></tr>
+  <tr><td>K-Means Clustering</td><td>K-Means++ initialization, 50 iterations, Euclidean distance</td><td>Groups document chunks into thematic clusters</td></tr>
+  <tr><td>PCA (2D Projection)</td><td>Power iteration for top-2 eigenvectors, mean-centred data</td><td>Reduces 768-D embeddings to 2D for visualization</td></tr>
+  <tr><td>t-SNE Simulation</td><td>Category-aware perturbation of PCA projections</td><td>Non-linear topology-preserving visualization</td></tr>
+  <tr><td>LOF Anomaly Detection</td><td>k-NN local reachability density, normalized score</td><td>Flags irrelevant/noise chunks in uploaded PDFs</td></tr>
+  <tr><td>Silhouette Score</td><td>Mean intra vs inter cluster distance ratio</td><td>Validates cluster quality (Unit VI metric)</td></tr>
+  <tr><td>WCSS / Inertia</td><td>Within-cluster sum of squares</td><td>Elbow method support for optimal k selection</td></tr>
+</table>
+
+<h2>4. Key Features</h2>
+<h3>4.1 Smart Chat Modes</h3>
+<p>Six expert AI personas, each with a distinct system prompt:</p>
+<ul>
+  <li><span class="badge blue">Explain Concept</span> — Feynman Technique explanation with analogies</li>
+  <li><span class="badge green">10-Mark Answer</span> — University exam structured answer</li>
+  <li><span class="badge purple">Short Notes</span> — High-density bullet-point revision notes</li>
+  <li><span class="badge orange">Viva Prep</span> — Oral exam Q&amp;A with model answers</li>
+  <li><span class="badge blue">Revision Blast</span> — Ultra-compact 10-minute pre-exam summary</li>
+  <li><span class="badge green">Exam Strategy</span> — Topic prioritization and study plan</li>
+</ul>
+
+<h3>4.2 Document Intelligence</h3>
+<ul>
+  <li>PDF upload with Apache PDFBox text extraction</li>
+  <li>Semantic chunking and embedding via nomic-embed-text (768 dimensions)</li>
+  <li>Stored as pgvector-compatible TEXT format in PostgreSQL</li>
+  <li>Per-user document scoping — each student only sees their own data</li>
+</ul>
+
+<h3>4.3 Analytics Dashboard</h3>
+<ul>
+  <li>Interactive 2D scatter plot of document embeddings (PCA and t-SNE views)</li>
+  <li>Colour-coded cluster assignments with auto-generated cluster labels</li>
+  <li>Anomaly highlighting (LOF score &gt; 0.65 flagged in red)</li>
+  <li>Metrics panel: Silhouette Score, Inertia, Variance Explained (PC1 + PC2)</li>
+</ul>
+
+<h3>4.4 Security (OWASP Compliant)</h3>
+<ul>
+  <li>BCrypt password hashing</li>
+  <li>Stateless JWT authentication (RS256)</li>
+  <li>Input sanitization to prevent prompt injection</li>
+  <li>Bucket4j rate limiting (10 req/min on auth endpoints, 60 req/min authenticated)</li>
+  <li>All data stays on local hardware — zero cloud dependency</li>
+</ul>
+
+<h2>5. Unsupervised Learning Mapping</h2>
+<table>
+  <tr><th>Unit</th><th>Topic</th><th>Implementation in CampusGPT</th></tr>
+  <tr><td>Unit II</td><td>Partition-Based Clustering</td><td>K-Means++ on 768-D embedding vectors</td></tr>
+  <tr><td>Unit IV</td><td>Dimensionality Reduction</td><td>PCA via power iteration; t-SNE simulation</td></tr>
+  <tr><td>Unit V</td><td>Anomaly Detection</td><td>LOF-style local density scoring</td></tr>
+  <tr><td>Unit VI</td><td>Cluster Validation</td><td>Silhouette Score + WCSS/Inertia metrics</td></tr>
+</table>
+
+<hr class="divider">
+
+<!-- SECTION 6 — FOR TEACHER -->
+<h2>6. How to Run the Project (For Evaluator)</h2>
+
+<div class="info-box">
+  <strong>✅ No Java, Node.js, or PostgreSQL installation needed.</strong><br>
+  Everything runs inside Docker containers. You only need <strong>Docker Desktop</strong>.
+</div>
+
+<h3>Step 1 — Install Docker Desktop</h3>
+<p>Download and install from: <strong>https://www.docker.com/products/docker-desktop</strong></p>
+<p>It is free and available for Windows, Mac, and Linux. After installing, make sure Docker Desktop is <strong>running</strong> (look for the whale icon in the system tray/menu bar).</p>
+
+<h3>Step 2 — Open Terminal in Project Folder</h3>
+<ul>
+  <li><strong>Mac:</strong> Right-click the <code>SLM</code> folder → "New Terminal at Folder"</li>
+  <li><strong>Windows:</strong> Open the <code>SLM</code> folder in File Explorer → click the address bar → type <code>cmd</code> → press Enter</li>
+</ul>
+
+<h3>Step 3 — Run One Command</h3>
+<pre>docker compose up --build</pre>
+<p>Docker will automatically build and start 4 services:</p>
+<ul>
+  <li><strong>postgres</strong> — Database with pgvector</li>
+  <li><strong>ollama</strong> — Local AI model server (downloads models automatically)</li>
+  <li><strong>backend</strong> — Spring Boot API on port 8080</li>
+  <li><strong>frontend</strong> — React app served via Nginx on port 3000</li>
+</ul>
+
+<div class="warn-box">
+  ⚠️ <strong>First run takes 5–10 minutes</strong> — Ollama needs to download the AI models (~2 GB). Internet required for first run only. Subsequent runs start in under 30 seconds.
+</div>
+
+<h3>Step 4 — Open the App</h3>
+<p>Once you see <code>campusgpt-frontend</code> in the logs, open your browser and visit:</p>
+<pre>http://localhost:3000</pre>
+
+<h3>Step 5 — Test the App</h3>
+<div class="step"><div class="step-num">1</div><div>Click <strong>Sign Up</strong> and create a new account.</div></div>
+<div class="step"><div class="step-num">2</div><div>Go to <strong>Upload</strong> and upload any PDF (lecture notes, textbook chapter, etc.).</div></div>
+<div class="step"><div class="step-num">3</div><div>Go to <strong>Chat</strong>, select a Smart Mode (e.g. "Explain Concept"), and ask a question about the PDF.</div></div>
+<div class="step"><div class="step-num">4</div><div>Go to <strong>Analytics</strong> to see the K-Means clusters and PCA visualization of your document.</div></div>
+
+<h3>To Stop the Application</h3>
+<pre>docker compose down</pre>
+
+<hr class="divider">
+
+<h2>7. Project File Structure</h2>
+<table>
+  <tr><th>Path</th><th>Description</th></tr>
+  <tr><td><code>docker-compose.yml</code></td><td>Orchestrates all services — single entry point</td></tr>
+  <tr><td><code>backend/src/main/java/com/campusgpt/chat/ChatService.java</code></td><td>Full RAG pipeline with MMR re-ranking</td></tr>
+  <tr><td><code>backend/src/main/java/com/campusgpt/analytics/EmbeddingAnalyticsService.java</code></td><td>All unsupervised learning algorithms</td></tr>
+  <tr><td><code>backend/src/main/java/com/campusgpt/document/DocumentService.java</code></td><td>PDF parsing, chunking, embedding</td></tr>
+  <tr><td><code>backend/src/main/resources/application.yml</code></td><td>All configuration via environment variables</td></tr>
+  <tr><td><code>frontend/src/pages/ChatPage.tsx</code></td><td>Real-time SSE streaming chat UI</td></tr>
+  <tr><td><code>frontend/src/pages/AnalyticsPage.tsx</code></td><td>Interactive analytics dashboard</td></tr>
+</table>
+
+<p style="text-align:center; color:#888; font-size:12px; margin-top:40px;">CampusGPT · Academic AI Project Report · April 2026</p>
+
+</body>
+</html>
