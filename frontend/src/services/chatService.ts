@@ -19,7 +19,7 @@ export const chatService = {
    * received token and onDone when the stream completes.
    *
    * @param question  The user's question
-   * @param mode      The smart mode (EXPLAIN_CONCEPT | TEN_MARK | SHORT_NOTES)
+   * @param mode      The smart mode (EXPLAIN_CONCEPT, TEN_MARK, SHORT_NOTES, VIVA, REVISION_BLAST, EXAM_STRATEGY)
    * @param history   Recent chat history to pass for multi-turn context
    * @param onToken   Callback called with each streamed token
    * @param onDone    Callback called when streaming is complete

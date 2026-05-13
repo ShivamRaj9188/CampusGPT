@@ -45,7 +45,7 @@ CampusGPT is a localized, high-performance academic assistance platform built on
 | Layer | Implementation |
 |-------|-----------|
 | Frontend | React 18, TypeScript, Vite, Framer Motion, Tailwind CSS |
-| Backend | Spring Boot 3.2, Java 25, Spring Security (JWT), Hibernate |
+| Backend | Spring Boot 3.2, Java 17+, Spring Security (JWT), Hibernate |
 | Database | PostgreSQL 16 + pgvector extension |
 | AI Inference | Ollama (Llama 3.2:3B + Nomic-Embed-Text) |
 | Pipeline | RAG workflow with Hybrid Search and Unsupervised Analytics |
@@ -83,16 +83,22 @@ graph TD
 
 ### 1. Unsupervised Learning & Embedding Analytics
 The platform features a specialized analytics engine that provides transparency into the AI's internal representation of uploaded documents:
-- **K-Means Clustering**: Automatically categorizes document chunks into distinct conceptual groups, revealing the document's thematic structure.
-- **PCA Visualization**: Reduces high-dimensional embeddings (768-D) to a 2D map, allowing users to visualize semantic relationships between topics.
+- **K-Means Clustering**: Uses K-Means++ initialization to automatically categorize document chunks into distinct conceptual groups, revealing the document's thematic structure.
+- **PCA Visualization**: Employs Power Iteration to reduce high-dimensional embeddings (768-D) to a 2D map, allowing users to visualize semantic relationships between topics.
 - **Anomaly Detection**: Utilizes Local Outlier Factor (LOF) to identify and flag irrelevant or non-contextual data segments (e.g., indexes, advertisements).
 - **Layman Reporting**: Translates complex mathematical metrics (Silhouette Score, Inertia) into human-readable insights regarding document quality and organization.
 
 ### 2. High-Performance RAG Infrastructure
-- **Hybrid Search Engine**: Combines pgvector semantic similarity with full-text keyword search (tsvector) for precise retrieval.
+- **Hybrid Search Engine**: Combines pgvector semantic similarity with full-text keyword search (tsvector) using Reciprocal Rank Fusion (RRF) for precise retrieval.
 - **Sub-20ms Latency**: Optimized database schema and HNSW indexing ensure near-instantaneous context retrieval.
 - **VRAM Persistence**: Configured with a background 'keep-alive' strategy to prevent model offloading, ensuring zero-latency response generation.
-- **Expert Personas**: Includes specialized AI modes (Explain Concept, 10-Mark Answer, Viva Prep, Exam Strategy) with unique system instructions and output templates.
+- **6 Smart Personas**: Includes specialized AI modes tailored for academic success:
+  - **Explain Concept**: Feynman Technique explanation with analogies.
+  - **10-Mark Answer**: University exam structured answer format.
+  - **Short Notes**: Bullet-point revision notes for quick study.
+  - **Viva Prep**: Oral exam Q&A with model answers.
+  - **Revision Blast**: Ultra-compact 10-minute pre-exam summary.
+  - **Exam Strategy**: Topic prioritization and study planning.
 
 ### 3. Advanced User Experience Features
 - **Session Persistence**: Full multi-session management with individual chat thread tracking and selective deletion.
@@ -103,8 +109,8 @@ The platform features a specialized analytics engine that provides transparency 
 ## System Configuration
 
 ### Prerequisites
-- Java 21 or higher (Java 25 recommended)
-- PostgreSQL 14+ with pgvector extension enabled
+- Java 17 or higher
+- PostgreSQL 16+ with pgvector extension enabled
 - Local Ollama instance with Llama 3.2 and Nomic-Embed-Text models
 
 ### Database Initialization

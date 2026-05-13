@@ -438,8 +438,9 @@ export default function ChatPage() {
                       <div className="ai-prose">
                         <ReactMarkdown
                           components={{
-                            code({ inline, children }) {
-                              if (inline) return <code className="bg-white/5 px-1.5 py-0.5 rounded text-[#00ff9d] text-[13px]">{children}</code>;
+                            code({ node, children, ...props }) {
+                              const isInline = node?.position?.start.line === node?.position?.end.line;
+                              if (isInline) return <code className="bg-white/5 px-1.5 py-0.5 rounded text-[#00ff9d] text-[13px]" {...props}>{children}</code>;
                               return <CodeBlock>{String(children).replace(/\n$/, '')}</CodeBlock>;
                             }
                           }}
